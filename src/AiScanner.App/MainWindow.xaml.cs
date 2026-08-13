@@ -41,6 +41,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     private TimeSpan _completedDuration;
     private int _completedSnapshots;
     private int _completedObservations;
+    private bool _hasInstantAnalysis;
 
     public ObservableCollection<ProcessAssessment> Assessments { get; } = [];
     public string Status { get => _status; private set => Set(ref _status, value); }
@@ -80,7 +81,17 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         Closed += (_, _) => { _timer.Stop(); _captureCancellation?.Cancel(); _networkCollector.Dispose(); };
     }
 
-    private async void ScanNow_Click(object sender, RoutedEventArgs e) => await ScanAsync();
+    private async void ScanNow_Click(object sender, RoutedEventArgs e)
+    {
+        await ScanAsync();
+        if (Assessments.Count > 0)
+        {
+            _hasInstantAnalysis = true;
+            _completedBundlePath = null;
+            HasCompletedAnalysis = true;
+            PromptStatus = "Anlık tarama tamamlandı • analiz promptu oluşturabilirsiniz";
+        }
+    }
 
     private void TitleBar_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
@@ -175,7 +186,18 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     {
         if (!HasCompletedAnalysis || string.IsNullOrWhiteSpace(_completedBundlePath))
         {
-            PromptStatus = "Önce süreli ölçümü tamamlayın";
+            if (!_hasInstantAnalysis || Assessments.Count == 0)
+            {
+                PromptStatus = "Önce şimdi tara veya süreli ölçüm çalıştırın";
+                return;
+            }
+
+            var instantPrompt = _promptBuilder.Build(Assessments.ToArray(), DateTimeOffset.UtcNow);
+            var instantPromptPath = Path.Combine(_telemetryStore.DataDirectory, $"instant-analysis-{DateTime.Now:yyyyMMdd-HHmmss}.prompt.txt");
+            Directory.CreateDirectory(_telemetryStore.DataDirectory);
+            await File.WriteAllTextAsync(instantPromptPath, instantPrompt);
+            Clipboard.SetText(instantPrompt);
+            PromptStatus = $"Anlık analiz promptu oluşturuldu ve panoya kopyalandı • {instantPromptPath}";
             return;
         }
 
