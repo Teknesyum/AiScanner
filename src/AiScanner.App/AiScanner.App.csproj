@@ -7,7 +7,7 @@
     <Company>Teknesyum</Company>
     <Authors>Teknesyum</Authors>
     <Description>Cross-platform process telemetry and AI-assisted threat analysis</Description>
-    <Version>0.3.7</Version>
+    <Version>0.3.8</Version>
     <ApplicationIcon Condition="$([MSBuild]::IsOSPlatform('Windows'))">Assets\AiScanner.ico</ApplicationIcon>
     <AvaloniaUseCompiledBindingsByDefault>false</AvaloniaUseCompiledBindingsByDefault>
   </PropertyGroup>

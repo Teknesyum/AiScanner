@@ -162,6 +162,31 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     }
 
     private void OpenDataFolder_Click(object? sender, RoutedEventArgs e) { Directory.CreateDirectory(_store.DataDirectory); OpenPath(_store.DataDirectory, false); }
+    private void OpenAnalysis_Click(object? sender, RoutedEventArgs e)
+    {
+        if (string.IsNullOrWhiteSpace(_bundlePath) || !File.Exists(_bundlePath))
+        {
+            Status = "Analiz dosyası bulunamadı";
+            return;
+        }
+
+        try
+        {
+            if (OperatingSystem.IsWindows()) Process.Start(new ProcessStartInfo(_bundlePath) { UseShellExecute = true });
+            else if (OperatingSystem.IsMacOS()) StartFileOpener("/usr/bin/open", _bundlePath);
+            else StartFileOpener("xdg-open", _bundlePath);
+            Status = "Analiz dosyası açıldı";
+        }
+        catch (Exception ex) { Status = $"Analiz açılamadı: {ex.Message}"; }
+    }
+
+    private static void StartFileOpener(string executable, string path)
+    {
+        var info = new ProcessStartInfo(executable) { UseShellExecute = false };
+        info.ArgumentList.Add(path);
+        Process.Start(info);
+    }
+
     private void OpenSponsor_Click(object? sender, RoutedEventArgs e) => OpenWebAddress("https://github.com/sponsors/Teknesyum");
     private void OpenGitHub_Click(object? sender, RoutedEventArgs e) => OpenWebAddress("https://github.com/Teknesyum");
 
