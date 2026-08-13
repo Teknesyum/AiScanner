@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net9.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <ApplicationIcon>Assets\AiScanner.ico</ApplicationIcon>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <AssemblyName>AiScanner</AssemblyName>
+    <Product>AI Scanner</Product>
+    <Company>Serkan Software</Company>
+    <Authors>Serkan Software</Authors>
+    <Description>Process telemetry and AI-assisted threat analysis</Description>
+    <Version>0.2.0</Version>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\AiScanner.Core\AiScanner.Core.csproj" />
+    <ProjectReference Include="..\AiScanner.Infrastructure\AiScanner.Infrastructure.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Assets\AiScannerIcon.png" />
+  </ItemGroup>
+</Project>
