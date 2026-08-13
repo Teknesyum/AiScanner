@@ -37,12 +37,21 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     private int _bundleObservations;
     private bool _instantReady;
     private bool _hasCompletedAnalysis;
+    private bool _isPromptNotificationVisible;
+    private string _promptButtonBackground = "#111522";
+    private string _promptButtonForeground = "#00F3FF";
+    private string _promptButtonBorder = "#00F3FF";
+    private int _promptFeedbackVersion;
 
     public ObservableCollection<ProcessAssessment> Assessments { get; } = [];
     public string Status { get => _status; private set => Set(ref _status, value); }
     public string ScanButtonText { get => _scanButtonText; private set => Set(ref _scanButtonText, value); }
     public string PromptStatus { get => _promptStatus; private set => Set(ref _promptStatus, value); }
     public string PromptButtonText { get => _promptButtonText; private set => Set(ref _promptButtonText, value); }
+    public string PromptButtonBackground { get => _promptButtonBackground; private set => Set(ref _promptButtonBackground, value); }
+    public string PromptButtonForeground { get => _promptButtonForeground; private set => Set(ref _promptButtonForeground, value); }
+    public string PromptButtonBorder { get => _promptButtonBorder; private set => Set(ref _promptButtonBorder, value); }
+    public bool IsPromptNotificationVisible { get => _isPromptNotificationVisible; private set => Set(ref _isPromptNotificationVisible, value); }
     public string LocalAnalysisReport { get => _localReport; private set => Set(ref _localReport, value); }
     public bool HasCompletedAnalysis { get => _hasCompletedAnalysis; private set => Set(ref _hasCompletedAnalysis, value); }
     public string VersionText
@@ -131,10 +140,20 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         }
         catch (Exception ex) { PromptStatus = $"Prompt dosyaya kaydedildi; pano kullanılamadı: {ex.Message} • {path}"; }
         PromptButtonText = copied ? "✓ Panoya kopyalandı" : "✓ Dosyaya kaydedildi";
+        PromptButtonBackground = copied ? "#173D20" : "#3A3012";
+        PromptButtonForeground = copied ? "#7CFF68" : "#FFD45C";
+        PromptButtonBorder = copied ? "#39FF14" : "#FFB000";
+        IsPromptNotificationVisible = copied;
         if (copied) PromptStatus = $"Prompt panoya kopyalandı • {path}";
         Status = copied ? "Prompt panoya kopyalandı" : "Prompt dosyaya kaydedildi";
-        await Task.Delay(TimeSpan.FromSeconds(4));
+        var feedbackVersion = ++_promptFeedbackVersion;
+        await Task.Delay(TimeSpan.FromSeconds(5));
+        if (feedbackVersion != _promptFeedbackVersion) return;
         PromptButtonText = "Analiz için prompt oluştur";
+        PromptButtonBackground = "#111522";
+        PromptButtonForeground = "#00F3FF";
+        PromptButtonBorder = "#00F3FF";
+        IsPromptNotificationVisible = false;
     }
 
     private void OpenDataFolder_Click(object? sender, RoutedEventArgs e) { Directory.CreateDirectory(_store.DataDirectory); OpenPath(_store.DataDirectory, false); }
