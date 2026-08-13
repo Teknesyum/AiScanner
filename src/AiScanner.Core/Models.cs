@@ -34,6 +34,15 @@ public sealed record ProcessAssessment(
     RiskLevel Level,
     IReadOnlyList<Finding> Findings)
 {
+    public string RiskColor => Level switch
+    {
+        RiskLevel.Critical => "#FF385C",
+        RiskLevel.High => "#FF7139",
+        RiskLevel.Medium => "#FFCA55",
+        RiskLevel.Low => "#7CCBFF",
+        _ => "#7CFF68"
+    };
+
     public string FindingsSummary => Findings.Count == 0
         ? "Belirgin risk sinyali bulunamadı."
         : string.Join(" • ", Findings.Select(x => x.Title));

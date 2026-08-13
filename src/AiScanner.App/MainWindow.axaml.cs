@@ -157,6 +157,15 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     }
 
     private void OpenDataFolder_Click(object? sender, RoutedEventArgs e) { Directory.CreateDirectory(_store.DataDirectory); OpenPath(_store.DataDirectory, false); }
+    private void OpenSponsor_Click(object? sender, RoutedEventArgs e) => OpenWebAddress("https://github.com/sponsors/Teknesyum");
+    private void OpenGitHub_Click(object? sender, RoutedEventArgs e) => OpenWebAddress("https://github.com/Teknesyum");
+
+    private void OpenWebAddress(string address)
+    {
+        try { Process.Start(new ProcessStartInfo(address) { UseShellExecute = true }); }
+        catch (Exception ex) { Status = $"Bağlantı açılamadı: {ex.Message}"; }
+    }
+
     private void OpenProcessLocation_Click(object? sender, RoutedEventArgs e)
     {
         var path = SelectedAssessment?.Process.ExecutablePath;
