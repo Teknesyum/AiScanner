@@ -110,8 +110,8 @@ public sealed class TelemetryStore
             var peakCpu = group.Max(x => x.CpuPercent);
             var averageCpu = group.Average(x => x.CpuPercent);
             var cpuRange = peakCpu - group.Min(x => x.CpuPercent);
-            var sentDelta = Math.Max(0, last.SentBytes - first.SentBytes);
-            var receivedDelta = Math.Max(0, last.ReceivedBytes - first.ReceivedBytes);
+            var sentDelta = group.GroupBy(x => x.ProcessId).Sum(pid => Math.Max(0, pid.Max(x => x.SentBytes) - pid.Min(x => x.SentBytes)));
+            var receivedDelta = group.GroupBy(x => x.ProcessId).Sum(pid => Math.Max(0, pid.Max(x => x.ReceivedBytes) - pid.Min(x => x.ReceivedBytes)));
             var recentFile = group.Any(x => x.FileCreatedAt >= DateTimeOffset.UtcNow.AddDays(-7));
             var signatureAvailable = group.Any(x => x.SignatureVerificationAvailable);
             var visibilityAvailable = group.Any(x => x.WindowVisibilityAvailable);
@@ -139,31 +139,31 @@ public sealed class TelemetryStore
                 .ToArray();
             return new
             {
-            identity = group.Key,
-            first.Name,
-            path = AnonymizePath(first.ExecutablePath),
-            first.Sha256,
-            samples = group.Count(),
-            maxCpu = Math.Round(peakCpu, 1),
-            avgCpu = Math.Round(averageCpu, 1),
-            cpuRange = Math.Round(cpuRange, 1),
-            maxRamMb = Math.Round(group.Max(x => x.WorkingSetBytes) / 1024d / 1024d, 1),
-            signed = group.Any(x => x.IsSigned),
-            signatureVerificationAvailable = signatureAvailable,
-            windowVisibilityAvailable = visibilityAvailable,
-            publishers = group.Select(x => x.Publisher).Where(x => x is not null).Distinct().ToArray(),
-            sentBytesInWindow = sentDelta,
-            receivedBytesInWindow = receivedDelta,
-            maxConnections = group.Max(x => x.ActiveConnections),
-            remoteEndpoints = group.SelectMany(x => x.RemoteEndpoints).Distinct().Take(50).ToArray(),
-            recentFile,
-            pidCount,
-            firstSeenUtc = group.Min(x => x.ObservedAt),
-            lastSeenUtc = group.Max(x => x.ObservedAt),
-            milestones,
-            meaningful,
-            localScore = Math.Min(100, localScore),
-            localFindings = localFindings.ToArray()
+                identity = group.Key,
+                first.Name,
+                path = AnonymizePath(first.ExecutablePath),
+                first.Sha256,
+                samples = group.Count(),
+                maxCpu = Math.Round(peakCpu, 1),
+                avgCpu = Math.Round(averageCpu, 1),
+                cpuRange = Math.Round(cpuRange, 1),
+                maxRamMb = Math.Round(group.Max(x => x.WorkingSetBytes) / 1024d / 1024d, 1),
+                signed = group.Any(x => x.IsSigned),
+                signatureVerificationAvailable = signatureAvailable,
+                windowVisibilityAvailable = visibilityAvailable,
+                publishers = group.Select(x => x.Publisher).Where(x => x is not null).Distinct().ToArray(),
+                sentBytesInWindow = sentDelta,
+                receivedBytesInWindow = receivedDelta,
+                maxConnections = group.Max(x => x.ActiveConnections),
+                remoteEndpoints = group.SelectMany(x => x.RemoteEndpoints).Distinct().Take(50).ToArray(),
+                recentFile,
+                pidCount,
+                firstSeenUtc = group.Min(x => x.ObservedAt),
+                lastSeenUtc = group.Max(x => x.ObservedAt),
+                milestones,
+                meaningful,
+                localScore = Math.Min(100, localScore),
+                localFindings = localFindings.ToArray()
             };
         }).ToArray();
         var summaries = allSummaries.Where(x => x.meaningful).OrderByDescending(x => x.localScore).ThenByDescending(x => x.sentBytesInWindow).ThenByDescending(x => x.maxCpu).ToArray();
@@ -222,13 +222,21 @@ public sealed class TelemetryStore
                 snapshot.CapturedAt,
                 processes = snapshot.Processes.Where(x => candidateKeys.Contains(Identity(x))).Select(x => new
                 {
-                    x.ProcessId, x.Name,
+                    x.ProcessId,
+                    x.Name,
                     executablePath = AnonymizePath(x.ExecutablePath),
                     x.StartedAt,
                     cpuPercent = Math.Round(x.CpuPercent, 1),
                     x.WorkingSetBytes,
-                    x.HasVisibleWindow, x.IsSigned, x.Publisher, x.Sha256,
-                    x.SentBytes, x.ReceivedBytes, x.ActiveConnections, x.RemoteEndpoints, x.FileCreatedAt
+                    x.HasVisibleWindow,
+                    x.IsSigned,
+                    x.Publisher,
+                    x.Sha256,
+                    x.SentBytes,
+                    x.ReceivedBytes,
+                    x.ActiveConnections,
+                    x.RemoteEndpoints,
+                    x.FileCreatedAt
                 })
             })
         };
@@ -241,6 +249,9 @@ public sealed class TelemetryStore
             $"Başlangıç: {captureStartedAt.LocalDateTime:G} • Bitiş: {captureEndedAt.LocalDateTime:G}",
             $"Kapsam: {snapshots.Count} örnek, {snapshots.Sum(x => x.Processes.Count)} gözlem, {summaries.Length} anlamlı aday",
             $"Elendi: düşük ve sabit kullanım gösteren {allSummaries.Length - summaries.Length} süreç",
+            snapshots.Any(x => x.NetworkByteTelemetryAvailable)
+                ? "Ağ baytı telemetrisi: kullanılabilir"
+                : "Ağ baytı telemetrisi: kullanılamıyor; 0 B değerleri güven kanıtı değildir",
             string.Empty
         };
         foreach (var candidate in summaries.Take(20))

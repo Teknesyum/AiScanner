@@ -9,6 +9,9 @@ namespace AiScanner.Infrastructure;
 public sealed class ProcessScanner
 {
     private readonly Dictionary<int, (TimeSpan Cpu, DateTimeOffset At)> _previous = [];
+    private readonly Dictionary<string, FileEvidence> _fileEvidence = OperatingSystem.IsWindows()
+        ? new(StringComparer.OrdinalIgnoreCase)
+        : new(StringComparer.Ordinal);
 
     public async Task<IReadOnlyList<ProcessObservation>> ScanAsync(CancellationToken cancellationToken = default)
     {
@@ -22,7 +25,7 @@ public sealed class ProcessScanner
             {
                 var cpu = CalculateCpu(process, now);
                 var path = TryGet(() => process.MainModule?.FileName);
-                var signature = GetSignature(path);
+                var evidence = await GetFileEvidenceAsync(path, cancellationToken);
                 var isWindows = OperatingSystem.IsWindows();
                 observations.Add(new(
                     process.Id,
@@ -32,12 +35,12 @@ public sealed class ProcessScanner
                     cpu,
                     TryGet(() => process.WorkingSet64),
                     isWindows && TryGet(() => process.MainWindowHandle != IntPtr.Zero),
-                    signature.IsSigned,
-                    signature.Publisher,
-                    await HashFileAsync(path, cancellationToken),
+                    evidence.IsSigned,
+                    evidence.Publisher,
+                    evidence.Sha256,
                     now)
                 {
-                    SignatureVerificationAvailable = signature.Available,
+                    SignatureVerificationAvailable = evidence.SignatureAvailable,
                     WindowVisibilityAvailable = isWindows,
                     FileCreatedAt = TryGet<DateTimeOffset?>(() => path is null ? null : File.GetCreationTimeUtc(path))
                 });
@@ -54,7 +57,28 @@ public sealed class ProcessScanner
 
         var activeIds = observations.Select(x => x.ProcessId).ToHashSet();
         foreach (var stale in _previous.Keys.Where(x => !activeIds.Contains(x)).ToArray()) _previous.Remove(stale);
+        if (_fileEvidence.Count > 4096) _fileEvidence.Clear();
         return observations;
+    }
+
+    private async Task<FileEvidence> GetFileEvidenceAsync(string? path, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(path)) return new(null, 0, DateTimeOffset.MinValue, false, null, OperatingSystem.IsWindows() || OperatingSystem.IsMacOS());
+        try
+        {
+            var file = new FileInfo(path);
+            var length = file.Length;
+            var lastWrite = file.LastWriteTimeUtc;
+            if (_fileEvidence.TryGetValue(path, out var cached) && cached.Length == length && cached.LastWriteUtc == lastWrite) return cached;
+            var signature = GetSignature(path);
+            var evidence = new FileEvidence(await HashFileAsync(path, cancellationToken), length, lastWrite, signature.IsSigned, signature.Publisher, signature.Available);
+            _fileEvidence[path] = evidence;
+            return evidence;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.ComponentModel.Win32Exception)
+        {
+            return new(null, 0, DateTimeOffset.MinValue, false, null, false);
+        }
     }
 
     private double CalculateCpu(Process process, DateTimeOffset now)
@@ -99,8 +123,12 @@ public sealed class ProcessScanner
                 ArgumentList = { "--verify", "--strict", path }
             });
             if (process is null) return (false, null, false);
-            process.WaitForExit(3000);
-            return (!process.HasExited ? false : process.ExitCode == 0, "Apple code signature", true);
+            if (!process.WaitForExit(3000))
+            {
+                try { process.Kill(true); } catch (InvalidOperationException) { }
+                return (false, null, false);
+            }
+            return (process.ExitCode == 0, "Apple code signature", true);
         }
         catch { return (false, null, false); }
     }
@@ -121,4 +149,6 @@ public sealed class ProcessScanner
         try { return action(); }
         catch (Exception ex) when (ex is InvalidOperationException or System.ComponentModel.Win32Exception or NotSupportedException) { return fallback; }
     }
+
+    private sealed record FileEvidence(string? Sha256, long Length, DateTimeOffset LastWriteUtc, bool IsSigned, string? Publisher, bool SignatureAvailable);
 }

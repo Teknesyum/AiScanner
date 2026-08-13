@@ -45,6 +45,14 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     public string PromptButtonText { get => _promptButtonText; private set => Set(ref _promptButtonText, value); }
     public string LocalAnalysisReport { get => _localReport; private set => Set(ref _localReport, value); }
     public bool HasCompletedAnalysis { get => _hasCompletedAnalysis; private set => Set(ref _hasCompletedAnalysis, value); }
+    public string VersionText
+    {
+        get
+        {
+            var version = typeof(MainWindow).Assembly.GetName().Version;
+            return version is null ? "Sürüm bilinmiyor" : $"v{version.Major}.{version.Minor}.{Math.Max(0, version.Build)} • Windows · Linux · macOS";
+        }
+    }
     public string SummaryText => $"{Assessments.Count} süreç • {Assessments.Count(x => x.Level >= RiskLevel.High)} yüksek risk";
     public ProcessAssessment? SelectedAssessment { get => _selected; set { if (Set(ref _selected, value)) OnPropertyChanged(nameof(SelectedDetails)); } }
     public string SelectedDetails => SelectedAssessment is null ? "Dosya konumunu açmak için bir süreç seçin."
@@ -61,7 +69,9 @@ public partial class MainWindow : Window, INotifyPropertyChanged
 
     private async void ScanNow_Click(object? sender, RoutedEventArgs e)
     {
+        if (_captureStart is not null) { PromptStatus = "Süreli ölçüm devam ederken anlık tarama başlatılamaz"; return; }
         await ScanAsync(true); _instantReady = Assessments.Count > 0; HasCompletedAnalysis = _instantReady;
+        _bundlePath = null;
         PromptStatus = _instantReady ? "Anlık tarama hazır • prompt oluşturabilirsiniz" : "Okunabilir süreç bulunamadı";
     }
 
@@ -114,10 +124,15 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         }
         else { PromptStatus = "Önce tarama veya süreli ölçüm çalıştırın"; return; }
         await File.WriteAllTextAsync(path, prompt);
-        if (TopLevel.GetTopLevel(this)?.Clipboard is { } clipboard) await clipboard.SetTextAsync(prompt);
-        PromptButtonText = "✓ Panoya kopyalandı";
-        PromptStatus = $"Prompt panoya kopyalandı • {path}";
-        Status = "Prompt panoya kopyalandı";
+        var copied = false;
+        try
+        {
+            if (TopLevel.GetTopLevel(this)?.Clipboard is { } clipboard) { await clipboard.SetTextAsync(prompt); copied = true; }
+        }
+        catch (Exception ex) { PromptStatus = $"Prompt dosyaya kaydedildi; pano kullanılamadı: {ex.Message} • {path}"; }
+        PromptButtonText = copied ? "✓ Panoya kopyalandı" : "✓ Dosyaya kaydedildi";
+        if (copied) PromptStatus = $"Prompt panoya kopyalandı • {path}";
+        Status = copied ? "Prompt panoya kopyalandı" : "Prompt dosyaya kaydedildi";
         await Task.Delay(TimeSpan.FromSeconds(4));
         PromptButtonText = "Analiz için prompt oluştur";
     }

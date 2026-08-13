@@ -41,6 +41,22 @@ public sealed class RiskEngineTests
     }
 
     [Fact]
+    public void UnavailablePlatformSignals_AreNotTreatedAsUnsignedOrHidden()
+    {
+        var process = Observation(@"/usr/bin/worker", 40, false, false) with
+        {
+            SignatureVerificationAvailable = false,
+            WindowVisibilityAvailable = false,
+            ActiveConnections = 2
+        };
+
+        var result = _engine.Assess(process, [], null);
+
+        Assert.DoesNotContain(result.Findings, x => x.Code is "unsigned" or "unsigned-network" or "hidden-load");
+        Assert.Contains(result.Findings, x => x.Code == "elevated-cpu");
+    }
+
+    [Fact]
     public void AiPrompt_ContainsOnlyRiskyCandidatesAndInstructions()
     {
         var risky = _engine.Assess(Observation(Path.Combine(Path.GetTempPath(), "worker.exe"), 80, false, false), [], null);

@@ -20,7 +20,18 @@ public sealed class TcpConnectionInspector
         {
             using var p = Process.Start(new ProcessStartInfo("/usr/sbin/lsof", "-nP -iTCP -sTCP:ESTABLISHED") { UseShellExecute = false, RedirectStandardOutput = true, CreateNoWindow = true });
             if (p is null) return Empty();
-            var lines = p.StandardOutput.ReadToEnd().Split('\n'); p.WaitForExit(3000);
+            string output;
+            try
+            {
+                output = p.StandardOutput.ReadToEndAsync().WaitAsync(TimeSpan.FromSeconds(3)).GetAwaiter().GetResult();
+                if (!p.WaitForExit(1000)) p.Kill(true);
+            }
+            catch (TimeoutException)
+            {
+                try { p.Kill(true); } catch (InvalidOperationException) { }
+                return Empty();
+            }
+            var lines = output.Split('\n');
             var result = new Dictionary<int, HashSet<string>>();
             foreach (var line in lines.Skip(1))
             {
@@ -84,7 +95,13 @@ public sealed class TcpConnectionInspector
             var bytes = Convert.FromHexString(pair[0]); Array.Reverse(bytes);
             return $"{new IPAddress(bytes)}:{Convert.ToInt32(pair[1], 16)}";
         }
-        return $"[{pair[0]}]:{Convert.ToInt32(pair[1], 16)}";
+        if (pair[0].Length == 32)
+        {
+            var raw = Convert.FromHexString(pair[0]);
+            for (var offset = 0; offset < raw.Length; offset += 4) Array.Reverse(raw, offset, 4);
+            return $"[{new IPAddress(raw)}]:{Convert.ToInt32(pair[1], 16)}";
+        }
+        return value;
     }
 
     private static IReadOnlyDictionary<int, IReadOnlyList<string>> GetWindowsEndpoints()

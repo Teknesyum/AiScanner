@@ -33,6 +33,6 @@
         </StackPanel></ScrollViewer>
       </TabItem>
     </TabControl>
-    <Border Grid.Row="2" Background="#090C13" BorderBrush="#3300F3FF" BorderThickness="0,1,0,0" Padding="18,0"><Grid><TextBlock VerticalAlignment="Center" Foreground="#738198" Text="v0.3.0 • Windows · Linux · macOS"/><TextBlock HorizontalAlignment="Right" VerticalAlignment="Center"><Run Foreground="#39FF14" Text="Teknesyum"/><Run Foreground="#738198" Text="  •  github.com/Teknesyum/AiScanner  •  Sponsor"/></TextBlock></Grid></Border>
+    <Border Grid.Row="2" Background="#090C13" BorderBrush="#3300F3FF" BorderThickness="0,1,0,0" Padding="18,0"><Grid><TextBlock VerticalAlignment="Center" Foreground="#738198" Text="{Binding VersionText}"/><TextBlock HorizontalAlignment="Right" VerticalAlignment="Center"><Run Foreground="#39FF14" Text="Teknesyum"/><Run Foreground="#738198" Text="  •  github.com/Teknesyum/AiScanner  •  Sponsor"/></TextBlock></Grid></Border>
   </Grid>
 </Window>
