@@ -26,13 +26,14 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     private string _status = "Başlatılıyor";
     private string _scanButtonText = "Şimdi tara";
     private string _promptStatus = "Ölçüm seçin veya anlık tarama yapın";
-    private string _promptButtonText = "Analiz için prompt oluştur";
+    private string _promptButtonText = "Promptu Kopyala";
     private string _localReport = "Süreli dinleme tamamlandığında yerel davranış raporu burada görünür.";
     private ProcessAssessment? _selected;
     private DateTimeOffset? _taskManagerStart;
     private DateTimeOffset? _captureStart;
     private CancellationTokenSource? _captureCancellation;
     private string? _bundlePath;
+    private string? _promptPath;
     private TimeSpan _bundleDuration;
     private int _bundleSnapshots;
     private int _bundleObservations;
@@ -55,6 +56,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     public string PromptButtonBorder { get => _promptButtonBorder; private set => Set(ref _promptButtonBorder, value); }
     public bool IsPromptNotificationVisible { get => _isPromptNotificationVisible; private set => Set(ref _isPromptNotificationVisible, value); }
     public bool IsTimedReportVisible { get => _isTimedReportVisible; private set => Set(ref _isTimedReportVisible, value); }
+    public bool HasPromptFile => !string.IsNullOrWhiteSpace(_promptPath) && File.Exists(_promptPath);
     public string LocalAnalysisReport { get => _localReport; private set => Set(ref _localReport, value); }
     public bool HasCompletedAnalysis { get => _hasCompletedAnalysis; private set => Set(ref _hasCompletedAnalysis, value); }
     public string VersionText
@@ -83,7 +85,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     {
         if (_captureStart is not null) { PromptStatus = "Süreli ölçüm devam ederken anlık tarama başlatılamaz"; return; }
         await ScanAsync(true); _instantReady = Assessments.Count > 0; HasCompletedAnalysis = _instantReady;
-        _bundlePath = null;
+        _bundlePath = null; _promptPath = null; OnPropertyChanged(nameof(HasPromptFile));
         PromptStatus = _instantReady ? "Anlık tarama hazır • prompt oluşturabilirsiniz" : "Okunabilir süreç bulunamadı";
     }
 
@@ -105,7 +107,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         if (_captureStart is not null) { PromptStatus = "Bir ölçüm zaten devam ediyor"; return; }
         _captureCancellation = new(); var token = _captureCancellation.Token;
         var started = DateTimeOffset.UtcNow; var ends = started + duration; _captureStart = started;
-        HasCompletedAnalysis = false; IsTimedReportVisible = false; _instantReady = false; _bundlePath = null;
+        HasCompletedAnalysis = false; IsTimedReportVisible = false; _instantReady = false; _bundlePath = null; _promptPath = null; OnPropertyChanged(nameof(HasPromptFile));
         LocalAnalysisReport = $"ÖLÇÜM DEVAM EDİYOR\nBaşlangıç: {started.LocalDateTime:G}\nSüre: {duration.TotalMinutes:0.##} dakika\n\nCPU, RAM, dosya kimliği ve platformun erişebildiği ağ sinyalleri örnekleniyor.";
         try
         {
@@ -138,6 +140,8 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         }
         else { PromptStatus = "Önce tarama veya süreli ölçüm çalıştırın"; return; }
         await File.WriteAllTextAsync(path, prompt);
+        _promptPath = path;
+        OnPropertyChanged(nameof(HasPromptFile));
         var copied = false;
         try
         {
@@ -154,7 +158,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         var feedbackVersion = ++_promptFeedbackVersion;
         await Task.Delay(TimeSpan.FromSeconds(5));
         if (feedbackVersion != _promptFeedbackVersion) return;
-        PromptButtonText = "Analiz için prompt oluştur";
+        PromptButtonText = "Promptu Kopyala";
         PromptButtonBackground = "#111522";
         PromptButtonForeground = "#00F3FF";
         PromptButtonBorder = "#00F3FF";
@@ -162,6 +166,20 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     }
 
     private void OpenDataFolder_Click(object? sender, RoutedEventArgs e) { Directory.CreateDirectory(_store.DataDirectory); OpenPath(_store.DataDirectory, false); }
+    private void OpenPromptLocation_Click(object? sender, RoutedEventArgs e)
+    {
+        if (string.IsNullOrWhiteSpace(_promptPath) || !File.Exists(_promptPath))
+        {
+            Status = "Prompt dosyası bulunamadı";
+            _promptPath = null;
+            OnPropertyChanged(nameof(HasPromptFile));
+            return;
+        }
+
+        OpenPath(_promptPath, true);
+        Status = "Prompt dosyasının konumu açıldı";
+    }
+
     private void OpenAnalysis_Click(object? sender, RoutedEventArgs e)
     {
         if (string.IsNullOrWhiteSpace(_bundlePath) || !File.Exists(_bundlePath))
