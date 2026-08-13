@@ -42,6 +42,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     private string _promptButtonForeground = "#00F3FF";
     private string _promptButtonBorder = "#00F3FF";
     private int _promptFeedbackVersion;
+    private bool _isTimedReportVisible;
 
     public ObservableCollection<ProcessAssessment> Assessments { get; } = [];
     public string Status { get => _status; private set => Set(ref _status, value); }
@@ -52,6 +53,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     public string PromptButtonForeground { get => _promptButtonForeground; private set => Set(ref _promptButtonForeground, value); }
     public string PromptButtonBorder { get => _promptButtonBorder; private set => Set(ref _promptButtonBorder, value); }
     public bool IsPromptNotificationVisible { get => _isPromptNotificationVisible; private set => Set(ref _isPromptNotificationVisible, value); }
+    public bool IsTimedReportVisible { get => _isTimedReportVisible; private set => Set(ref _isTimedReportVisible, value); }
     public string LocalAnalysisReport { get => _localReport; private set => Set(ref _localReport, value); }
     public bool HasCompletedAnalysis { get => _hasCompletedAnalysis; private set => Set(ref _hasCompletedAnalysis, value); }
     public string VersionText
@@ -86,12 +88,14 @@ public partial class MainWindow : Window, INotifyPropertyChanged
 
     private async void Duration_Click(object? sender, RoutedEventArgs e)
     {
+        DurationMenuButton.Flyout?.Hide();
         if (sender is Button { Tag: string value } && double.TryParse(value, out var minutes)) await StartTimedAsync(TimeSpan.FromMinutes(minutes));
     }
 
     private async void CustomDuration_Click(object? sender, RoutedEventArgs e)
     {
         if (!double.TryParse(CustomMinutes.Text, out var minutes) || minutes <= 0 || minutes > 10080) { PromptStatus = "Özel süre 0-10080 dakika arasında olmalı"; return; }
+        DurationMenuButton.Flyout?.Hide();
         await StartTimedAsync(TimeSpan.FromMinutes(minutes));
     }
 
@@ -100,20 +104,20 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         if (_captureStart is not null) { PromptStatus = "Bir ölçüm zaten devam ediyor"; return; }
         _captureCancellation = new(); var token = _captureCancellation.Token;
         var started = DateTimeOffset.UtcNow; var ends = started + duration; _captureStart = started;
-        HasCompletedAnalysis = false; _instantReady = false; _bundlePath = null;
+        HasCompletedAnalysis = false; IsTimedReportVisible = false; _instantReady = false; _bundlePath = null;
         LocalAnalysisReport = $"ÖLÇÜM DEVAM EDİYOR\nBaşlangıç: {started.LocalDateTime:G}\nSüre: {duration.TotalMinutes:0.##} dakika\n\nCPU, RAM, dosya kimliği ve platformun erişebildiği ağ sinyalleri örnekleniyor.";
         try
         {
             await ScanAsync(true);
             while (DateTimeOffset.UtcNow < ends)
             {
-                var left = ends - DateTimeOffset.UtcNow; ScanButtonText = $"Taranıyor • {(int)left.TotalMinutes:00}:{left.Seconds:00}"; PromptStatus = $"Dinleniyor • kalan {(int)left.TotalMinutes:00}:{left.Seconds:00}";
+                var left = ends - DateTimeOffset.UtcNow; ScanButtonText = $"Analiz Yapılıyor • {(int)left.TotalMinutes:00}:{left.Seconds:00}"; PromptStatus = $"Dinleniyor • kalan {(int)left.TotalMinutes:00}:{left.Seconds:00}";
                 await Task.Delay(TimeSpan.FromSeconds(Math.Min(1, Math.Max(.1, left.TotalSeconds))), token);
             }
             await ScanAsync(true);
             var result = await _store.CreateAnalysisBundleAsync(started, DateTimeOffset.UtcNow, duration, token);
             _bundlePath = result.Path; _bundleDuration = duration; _bundleSnapshots = result.Snapshots; _bundleObservations = result.Observations;
-            LocalAnalysisReport = result.LocalReport; HasCompletedAnalysis = true; PromptStatus = $"Yerel analiz tamamlandı • {result.Snapshots} örnek • {result.Observations} gözlem";
+            LocalAnalysisReport = result.LocalReport; IsTimedReportVisible = true; HasCompletedAnalysis = true; PromptStatus = $"Yerel analiz tamamlandı • {result.Snapshots} örnek • {result.Observations} gözlem";
         }
         catch (OperationCanceledException) { PromptStatus = "Ölçüm iptal edildi"; }
         catch (Exception ex) { PromptStatus = $"Analiz oluşturulamadı: {ex.Message}"; }
