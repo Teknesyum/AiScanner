@@ -113,8 +113,10 @@ public sealed class TelemetryStore
             var sentDelta = Math.Max(0, last.SentBytes - first.SentBytes);
             var receivedDelta = Math.Max(0, last.ReceivedBytes - first.ReceivedBytes);
             var recentFile = group.Any(x => x.FileCreatedAt >= DateTimeOffset.UtcNow.AddDays(-7));
-            var unsigned = !group.Any(x => x.IsSigned);
-            var hidden = group.All(x => !x.HasVisibleWindow);
+            var signatureAvailable = group.Any(x => x.SignatureVerificationAvailable);
+            var visibilityAvailable = group.Any(x => x.WindowVisibilityAvailable);
+            var unsigned = signatureAvailable && !group.Any(x => x.IsSigned);
+            var hidden = visibilityAvailable && group.Where(x => x.WindowVisibilityAvailable).All(x => !x.HasVisibleWindow);
             var pidCount = group.Select(x => x.ProcessId).Distinct().Count();
             var localFindings = new List<string>();
             var localScore = 0;
@@ -128,7 +130,7 @@ public sealed class TelemetryStore
             if (hidden && (peakCpu >= 35 || sentDelta >= 1024 * 1024)) { localScore += 15; localFindings.Add("Görünür pencere olmadan yoğun kaynak/ağ kullanımı"); }
             if (pidCount > 1) { localScore += 10; localFindings.Add($"Aynı dosya {pidCount} farklı PID ile gözlendi"); }
             var meaningful = peakCpu >= 15 || cpuRange >= 12 || sentDelta >= 256 * 1024 || receivedDelta >= 1024 * 1024 ||
-                             group.Any(x => x.ActiveConnections > 0 && !x.IsSigned) || recentFile || pidCount > 1;
+                             group.Any(x => x.ActiveConnections > 0 && x.SignatureVerificationAvailable && !x.IsSigned) || recentFile || pidCount > 1;
             var milestones = ordered.Where((item, index) => index == 0 || index == ordered.Length - 1 ||
                     Math.Abs(item.CpuPercent - ordered[index - 1].CpuPercent) >= 10 ||
                     item.ActiveConnections != ordered[index - 1].ActiveConnections)
@@ -147,6 +149,8 @@ public sealed class TelemetryStore
             cpuRange = Math.Round(cpuRange, 1),
             maxRamMb = Math.Round(group.Max(x => x.WorkingSetBytes) / 1024d / 1024d, 1),
             signed = group.Any(x => x.IsSigned),
+            signatureVerificationAvailable = signatureAvailable,
+            windowVisibilityAvailable = visibilityAvailable,
             publishers = group.Select(x => x.Publisher).Where(x => x is not null).Distinct().ToArray(),
             sentBytesInWindow = sentDelta,
             receivedBytesInWindow = receivedDelta,

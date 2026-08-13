@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
+using System.Runtime.InteropServices;
 using AiScanner.Core;
 
 namespace AiScanner.Infrastructure;
@@ -22,6 +23,7 @@ public sealed class ProcessScanner
                 var cpu = CalculateCpu(process, now);
                 var path = TryGet(() => process.MainModule?.FileName);
                 var signature = GetSignature(path);
+                var isWindows = OperatingSystem.IsWindows();
                 observations.Add(new(
                     process.Id,
                     process.ProcessName,
@@ -29,12 +31,14 @@ public sealed class ProcessScanner
                     TryGet<DateTimeOffset?>(() => process.StartTime),
                     cpu,
                     TryGet(() => process.WorkingSet64),
-                    TryGet(() => process.MainWindowHandle != IntPtr.Zero),
+                    isWindows && TryGet(() => process.MainWindowHandle != IntPtr.Zero),
                     signature.IsSigned,
                     signature.Publisher,
                     await HashFileAsync(path, cancellationToken),
                     now)
                 {
+                    SignatureVerificationAvailable = signature.Available,
+                    WindowVisibilityAvailable = isWindows,
                     FileCreatedAt = TryGet<DateTimeOffset?>(() => path is null ? null : File.GetCreationTimeUtc(path))
                 });
             }
@@ -67,18 +71,38 @@ public sealed class ProcessScanner
         return Math.Clamp(result, 0, 100);
     }
 
-    private static (bool IsSigned, string? Publisher) GetSignature(string? path)
+    private static (bool IsSigned, string? Publisher, bool Available) GetSignature(string? path)
     {
-        if (string.IsNullOrWhiteSpace(path)) return (false, null);
+        if (string.IsNullOrWhiteSpace(path)) return (false, null, OperatingSystem.IsWindows() || OperatingSystem.IsMacOS());
+        if (OperatingSystem.IsMacOS()) return GetMacSignature(path);
+        if (!OperatingSystem.IsWindows()) return (false, null, false);
         try
         {
 #pragma warning disable SYSLIB0057 // Authenticode gömülü sertifikasını dosyadan okuyan modern eşdeğer API henüz yok.
             using var certificate = new X509Certificate2(X509Certificate.CreateFromSignedFile(path));
 #pragma warning restore SYSLIB0057
             using var chain = new X509Chain { ChainPolicy = { RevocationMode = X509RevocationMode.NoCheck } };
-            return (chain.Build(certificate), certificate.GetNameInfo(X509NameType.SimpleName, false));
+            return (chain.Build(certificate), certificate.GetNameInfo(X509NameType.SimpleName, false), true);
         }
-        catch (CryptographicException) { return (false, null); }
+        catch (CryptographicException) { return (false, null, true); }
+    }
+
+    private static (bool IsSigned, string? Publisher, bool Available) GetMacSignature(string path)
+    {
+        try
+        {
+            using var process = Process.Start(new ProcessStartInfo("/usr/bin/codesign")
+            {
+                UseShellExecute = false,
+                RedirectStandardError = true,
+                CreateNoWindow = true,
+                ArgumentList = { "--verify", "--strict", path }
+            });
+            if (process is null) return (false, null, false);
+            process.WaitForExit(3000);
+            return (!process.HasExited ? false : process.ExitCode == 0, "Apple code signature", true);
+        }
+        catch { return (false, null, false); }
     }
 
     private static async Task<string?> HashFileAsync(string? path, CancellationToken cancellationToken)

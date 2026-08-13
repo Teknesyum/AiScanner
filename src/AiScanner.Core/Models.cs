@@ -15,6 +15,8 @@ public sealed record ProcessObservation(
     string? Sha256,
     DateTimeOffset ObservedAt)
 {
+    public bool SignatureVerificationAvailable { get; init; } = true;
+    public bool WindowVisibilityAvailable { get; init; } = true;
     public long SentBytes { get; init; }
     public long ReceivedBytes { get; init; }
     public int ActiveConnections { get; init; }

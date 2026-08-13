@@ -17,6 +17,13 @@ public sealed class NetworkTelemetryCollector : IDisposable
 
     public void Start()
     {
+        if (!OperatingSystem.IsWindows())
+        {
+            Status = OperatingSystem.IsLinux()
+                ? "Linux: süreç başına ağ baytı ölçümü ayrıcalıklı eBPF gerektirir; bağlantılar /proc üzerinden izleniyor"
+                : "macOS: süreç başına ağ baytı ölçümü Network Extension yetkisi gerektirir; bağlantılar lsof üzerinden izleniyor";
+            return;
+        }
         try
         {
             _session = new TraceEventSession($"AiScanner-Network-{Environment.ProcessId}") { StopOnDispose = true };

@@ -24,10 +24,12 @@ public sealed class AiAnalysisPromptBuilder
                 path = AnonymizePath(x.Process.ExecutablePath),
                 sha256 = x.Process.Sha256,
                 signed = x.Process.IsSigned,
+                signatureVerificationAvailable = x.Process.SignatureVerificationAvailable,
                 publisher = x.Process.Publisher,
                 cpu = Math.Round(x.Process.CpuPercent, 1),
                 ramMb = Math.Round(x.Process.WorkingSetBytes / 1024d / 1024d, 1),
                 visible = x.Process.HasVisibleWindow,
+                windowVisibilityAvailable = x.Process.WindowVisibilityAvailable,
                 localScore = x.Score,
                 localLevel = x.Level.ToString(),
                 findings = x.Findings.Select(f => new { f.Code, f.Score, f.Explanation })

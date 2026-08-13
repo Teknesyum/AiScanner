@@ -12,7 +12,7 @@ public sealed class RiskEngine : IRiskEngine
     {
         var findings = new List<Finding>();
 
-        if (!process.IsSigned && process.ExecutablePath is not null)
+        if (process.SignatureVerificationAvailable && !process.IsSigned && process.ExecutablePath is not null)
             findings.Add(new("unsigned", "Dijital imza doğrulanamadı", "Dosyanın doğrulanabilir bir yayıncı imzası yok.", 15));
 
         if (process.ExecutablePath is not null && SuspiciousRoots.Any(root =>
@@ -24,16 +24,16 @@ public sealed class RiskEngine : IRiskEngine
         else if (process.CpuPercent >= 35)
             findings.Add(new("elevated-cpu", "Yüksek CPU kullanımı", $"Anlık CPU kullanımı %{process.CpuPercent:F1}.", 10));
 
-        if (!process.HasVisibleWindow && process.CpuPercent >= 35)
+        if (process.WindowVisibilityAvailable && !process.HasVisibleWindow && process.CpuPercent >= 35)
             findings.Add(new("hidden-load", "Görünür pencere olmadan yoğun çalışıyor", "Arka plandaki süreç anlamlı işlemci gücü tüketiyor.", 10));
 
-        if (!process.IsSigned && process.ActiveConnections > 0)
+        if (process.SignatureVerificationAvailable && !process.IsSigned && process.ActiveConnections > 0)
             findings.Add(new("unsigned-network", "İmzasız süreç dış ağ bağlantısı kuruyor", $"{process.ActiveConnections} etkin uzak bağlantı gözlendi.", 20));
 
         if (process.FileCreatedAt is { } created && created >= DateTimeOffset.UtcNow.AddDays(-7) && process.ActiveConnections > 0)
             findings.Add(new("recent-network-binary", "Yeni oluşturulmuş dosya ağ kullanıyor", $"Dosya oluşturma zamanı: {created.LocalDateTime:g}.", 15));
 
-        if (process.SentBytes >= 10 * 1024 * 1024 && !process.HasVisibleWindow)
+        if (process.WindowVisibilityAvailable && process.SentBytes >= 10 * 1024 * 1024 && !process.HasVisibleWindow)
             findings.Add(new("background-upload", "Arka planda yüksek veri gönderimi", $"İzleme başladığından beri {process.SentBytes / 1024d / 1024d:F1} MB gönderildi.", 20));
 
         AddTaskManagerEvasionFinding(process, history, lastTaskManagerStart, findings);
