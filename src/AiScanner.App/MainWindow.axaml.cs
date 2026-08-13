@@ -5,6 +5,7 @@ using System.Runtime.CompilerServices;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Avalonia.Input.Platform;
+using Avalonia.Input;
 using Avalonia.Threading;
 using AiScanner.Core;
 using AiScanner.Infrastructure;
@@ -175,6 +176,16 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         var path = SelectedAssessment?.Process.ExecutablePath;
         if (string.IsNullOrWhiteSpace(path) || !File.Exists(path)) { Status = "Seçili dosyaya erişilemiyor"; return; }
         OpenPath(path, true);
+    }
+
+    private void ProcessName_PointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        if (sender is not Control { DataContext: ProcessAssessment assessment }) return;
+        SelectedAssessment = assessment;
+        var path = assessment.Process.ExecutablePath;
+        if (string.IsNullOrWhiteSpace(path) || !File.Exists(path)) { Status = "Seçili dosyaya erişilemiyor"; return; }
+        OpenPath(path, true);
+        e.Handled = true;
     }
 
     private void OpenPath(string path, bool selectFile)
