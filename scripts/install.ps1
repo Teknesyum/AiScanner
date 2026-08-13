@@ -12,7 +12,11 @@ New-Item -ItemType Directory -Force -Path $temporaryDir | Out-Null
 try {
     Invoke-WebRequest -UseBasicParsing -Uri $asset.browser_download_url -OutFile $archivePath
     if (Test-Path $installDir) {
-        Get-Process -Name 'AiScanner' -ErrorAction SilentlyContinue | Stop-Process -Force
+        $runningProcesses = @(Get-Process -Name 'AiScanner' -ErrorAction SilentlyContinue)
+        if ($runningProcesses.Count -gt 0) {
+            $runningProcesses | Stop-Process -Force
+            $runningProcesses | ForEach-Object { $_.WaitForExit(5000) }
+        }
         Remove-Item -LiteralPath $installDir -Recurse -Force
     }
     New-Item -ItemType Directory -Force -Path $installDir | Out-Null
