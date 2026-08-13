@@ -170,7 +170,7 @@ dotnet run --project src/AiScanner.App/AiScanner.App.csproj
 Create self-contained Windows x64, Linux x64, macOS x64, and macOS ARM64 archives:
 
 ```powershell
-./scripts/build-release.ps1 -Version 0.3.1
+./scripts/build-release.ps1 -Version 0.3.2
 ```
 
 The desktop UI uses [Avalonia](https://avaloniaui.net/). Windows network-byte collection uses ETW; Linux and macOS adapters use native, read-only operating-system sources.
