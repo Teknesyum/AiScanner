@@ -57,6 +57,78 @@ The app is installed as `~/Applications/AI Scanner.app` and opened automatically
 
 Run the same one-line installer again. It downloads the newest GitHub release and replaces the existing installation while keeping locally collected analysis data.
 
+## How to use AI Scanner
+
+### 1. Start the application
+
+Open **AI Scanner** from the desktop shortcut or application menu. Linux users can also run `aiscanner` from a terminal. The app begins monitoring the process list and shows its collector status at the top.
+
+On Windows, launching it as Administrator enables ETW per-process upload/download byte collection. If you launch it normally, process, CPU, memory, file, signature and connection analysis still works; the unavailable network-byte capability is clearly marked instead of being reported as zero traffic.
+
+### 2. Run an instant scan
+
+Open the **Scan** tab and click **Scan now**. The table is refreshed with the currently running processes and ordered by the local risk score.
+
+- Select a row to see its executable path, SHA-256 hash and verified publisher.
+- Click **Open file location** to reveal the selected executable in Explorer, Finder or your Linux file manager.
+- Review the risk level and primary reason. A high score means “investigate first”, not automatic proof of malware.
+- After the scan completes, **Create prompt for analysis** becomes available.
+
+Use an instant scan when you want a quick snapshot. It cannot prove behavior that only becomes visible over time.
+
+### 3. Record behavior over time
+
+Open **Timed Analysis** and choose **1, 5, 10, 20 minutes**, or enter a custom duration and click **Start**. Recording begins at the exact moment you press the button; older telemetry is not mixed into the session.
+
+During recording:
+
+- the **Scan now** control displays `Scanning • MM:SS`;
+- the process table continues updating approximately every four seconds;
+- CPU, RAM, file identity, active endpoints and available network counters are saved locally;
+- wait until the countdown finishes—closing the app cancels the current session.
+
+Suggested durations:
+
+| Duration | Good for |
+|---|---|
+| 1 minute | quick CPU spikes and immediately active processes |
+| 5 minutes | first-pass checks for miners and aggressive background traffic |
+| 10–20 minutes | intermittent spyware behavior, periodic uploads and load changes |
+| Custom | reproducing a known event, application launch or suspicious scheduled activity |
+
+When recording finishes, AI Scanner correlates observations by executable path and SHA-256, filters stable low-value noise, calculates local findings, and writes a readable report. The prompt button appears only after this local work is complete.
+
+### 4. Create the AI analysis prompt
+
+Click **Create prompt for analysis**. The button changes to **✓ Copied to clipboard** for confirmation. AI Scanner also saves the prompt next to the analysis bundle so the result is not lost if clipboard access fails.
+
+Paste the prompt into Codex or another AI assistant. The prompt tells the AI where the local JSON evidence file is located, how its fields are organized, which platform capabilities were unavailable, and asks for an evidence-based report. If that AI cannot access files on your computer, attach the referenced `analysis-*.json` file manually.
+
+A useful final report should include:
+
+- a prioritized list of suspicious processes and the evidence for each one;
+- likely benign explanations and confidence level;
+- path, PID and SHA-256 for files that need further inspection;
+- safe verification steps before deleting, blocking or terminating anything;
+- an explicit note when evidence is insufficient.
+
+### 5. Find saved evidence
+
+Click **Open data folder** in **Timed Analysis**. The folder contains:
+
+- `telemetry.jsonl` — chronological local process snapshots;
+- `analysis-*.json` — filtered and correlated evidence for a completed timed session;
+- `analysis-*.prompt.txt` — the ready-to-paste AI instruction;
+- `instant-analysis-*.prompt.txt` — prompts created from instant scans.
+
+AI Scanner does not upload these files automatically. You decide if and where they are shared.
+
+### Reading results safely
+
+Scores combine several indicators, including sustained CPU load, rapid changes, writable-path execution, recent binaries, unsigned network activity where signature verification exists, PID respawning and unusual network behavior. Normal developer tools, game launchers, backup clients and update services can trigger similar signals.
+
+Do not delete a file solely because it appears near the top. Verify its path and publisher, compare its SHA-256 with a trusted source, scan it with your security product, and only then decide on remediation. If a process disappears when a system monitor opens, reproduce the behavior with a timed recording rather than relying on a single observation.
+
 ## What it detects
 
 - CPU and memory behavior over time—not just a single snapshot
