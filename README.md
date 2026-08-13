@@ -6,27 +6,56 @@ AI Scanner listens to running processes for a selected period, performs the expe
 
 ![AI Scanner neon desktop interface](docs/screenshots/aiscanner-main.jpg)
 
-## One-line install
+## Install in one command
 
-Windows x64 (PowerShell):
+The release packages are self-contained; you do **not** need to install .NET or build the source code.
+
+### Windows 10/11 x64
+
+Open **PowerShell**, paste this line, and press Enter:
 
 ```powershell
 irm https://raw.githubusercontent.com/Teknesyum/AiScanner/main/scripts/install.ps1 | iex
 ```
 
-Linux x64:
+The installer downloads the latest release, installs it under `%LOCALAPPDATA%\Programs\AiScanner`, creates an **AI Scanner** desktop shortcut with the application icon, and launches the app. Run PowerShell as Administrator when you want Windows ETW upload/download byte telemetry; the rest of the scanner also works without elevation.
+
+### Linux x64
+
+Open a terminal, paste this line, and press Enter:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/Teknesyum/AiScanner/main/scripts/install-linux.sh | bash
 ```
 
-macOS Intel and Apple Silicon:
+The installer places the application in `~/.local/share/AiScanner`, creates the `aiscanner` command and adds **AI Scanner** to the desktop application menu. On a graphical session it launches the app automatically. No `sudo` is required.
+
+If your minimal Linux installation does not already contain desktop libraries, install them once:
+
+```bash
+# Ubuntu / Debian
+sudo apt update && sudo apt install -y libx11-6 libice6 libsm6 libfontconfig1
+```
+
+You can then launch it from the application menu or run:
+
+```bash
+aiscanner
+```
+
+### macOS — Intel and Apple Silicon
+
+Open **Terminal**, paste this line, and press Enter. The installer automatically selects Intel (`x64`) or Apple Silicon (`arm64`):
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/Teknesyum/AiScanner/main/scripts/install-macos.sh | bash
 ```
 
-Release binaries are self-contained; a separate .NET installation is not required. macOS packages are currently not Apple-notarized, so Gatekeeper may require an explicit first launch from Finder. Linux desktop integration expects an X11/Wayland desktop and common Avalonia runtime libraries.
+The app is installed as `~/Applications/AI Scanner.app` and opened automatically. The current package is not Apple-notarized. If macOS blocks the first launch, open **Finder → Home → Applications**, Control-click **AI Scanner**, choose **Open**, then confirm **Open**. This approval is normally needed only once.
+
+### Updating
+
+Run the same one-line installer again. It downloads the newest GitHub release and replaces the existing installation while keeping locally collected analysis data.
 
 ## What it detects
 
@@ -53,7 +82,7 @@ Missing telemetry is recorded as **unavailable**, never as zero activity or evid
 
 ## Local data and AI workflow
 
-Data is stored under the operating system's local application-data directory in `AiScanner/telemetry`. The generated prompt contains the exact analysis bundle path, explains its schema, marks unavailable capabilities, and asks the AI to produce an evidence-based report. The app never uploads data by itself, kills processes, deletes files, or quarantines software.
+Data is stored under the operating system's local application-data directory in `AiScanner/data`. The generated prompt contains the exact analysis bundle path, explains its schema, marks unavailable capabilities, and asks the AI to produce an evidence-based report. The app never uploads data by itself, kills processes, deletes files, or quarantines software.
 
 AI Scanner is a triage and investigation aid, not a replacement for antivirus/EDR or professional incident response.
 

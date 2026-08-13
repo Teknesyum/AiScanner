@@ -22,3 +22,6 @@ Terminal=false
 Categories=System;Security;
 EOF
 echo "AI Scanner installed. Run: aiscanner"
+if [ -n "${DISPLAY:-}" ] || [ -n "${WAYLAND_DISPLAY:-}" ]; then
+  "$install_dir/AiScanner" >/dev/null 2>&1 &
+fi
