@@ -35,6 +35,31 @@ public sealed record ProcessObservation(
 public sealed record Finding(string Code, string Title, string Explanation, int Score);
 public sealed record SuppressedFinding(string Code, string Reason);
 
+public sealed record PersistenceEntry(
+    string Source,
+    string Name,
+    string Command,
+    string? ResolvedPath,
+    string? Sha256,
+    SignatureStatus SignatureStatus,
+    string? Publisher,
+    bool Enabled,
+    DateTimeOffset? CreatedAt,
+    IReadOnlyList<int> LinkedProcessIds);
+
+public sealed record PersistenceSourceResult(
+    string Source,
+    bool Available,
+    string? Status,
+    IReadOnlyList<PersistenceEntry> Entries);
+
+public sealed record PersistenceInventory(
+    DateTimeOffset CollectedAtUtc,
+    IReadOnlyList<PersistenceSourceResult> Sources)
+{
+    public IReadOnlyList<PersistenceEntry> Entries => Sources.SelectMany(x => x.Entries).ToArray();
+}
+
 public sealed record ProcessAssessment(
     ProcessObservation Process,
     int Score,
@@ -58,6 +83,7 @@ public sealed record ProcessAssessment(
 }
 
 public sealed record UsageSample(int ProcessId, string Name, double CpuPercent, DateTimeOffset Timestamp);
+public readonly record struct RiskContext(DateTimeOffset? LastTaskManagerStart, IReadOnlySet<string> PersistentPaths);
 
 public sealed record ProcessMilestone(
     DateTimeOffset AtUtc,
@@ -95,6 +121,7 @@ public sealed record ProcessWindowSummary(
     bool CommandLineAvailable,
     bool ProcessTreeAvailable,
     bool SuspiciousLaunchChain,
+    bool Persistent,
     long SentBytesInWindow,
     long ReceivedBytesInWindow,
     int MaxConnections,
@@ -135,6 +162,8 @@ public static class RuleSet
         new("high-download", "Yüksek download", 8),
         new("pid-respawn", "Aynı dosya farklı PID ile gözlendi", 10)
         ,new("suspicious-launch-chain", "Şüpheli başlatma zinciri", 20)
+        ,new("persistent", "Kalıcılık kaydıyla eşleşen süreç", 15)
+        ,new("persistent-unsigned-network", "İmzasız kalıcı süreç ağ kullanıyor", 30)
     }.ToDictionary(x => x.Code, StringComparer.Ordinal);
 
     public static class MeaningfulThresholds
@@ -153,5 +182,6 @@ public static class RuleSet
 public interface IRiskEngine
 {
     ProcessAssessment Assess(ProcessObservation process, IReadOnlyCollection<UsageSample> history, DateTimeOffset? lastTaskManagerStart);
+    ProcessAssessment Assess(ProcessObservation process, IReadOnlyCollection<UsageSample> history, RiskContext context);
     WindowAssessment AssessWindow(ProcessWindowSummary summary);
 }

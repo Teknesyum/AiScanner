@@ -9,6 +9,9 @@ public sealed class RiskEngine : IRiskEngine
     ];
 
     public ProcessAssessment Assess(ProcessObservation process, IReadOnlyCollection<UsageSample> history, DateTimeOffset? lastTaskManagerStart)
+        => Assess(process, history, new RiskContext(lastTaskManagerStart, new HashSet<string>()));
+
+    public ProcessAssessment Assess(ProcessObservation process, IReadOnlyCollection<UsageSample> history, RiskContext context)
     {
         var findings = new List<Finding>();
         var suppressed = new List<SuppressedFinding>();
@@ -32,7 +35,11 @@ public sealed class RiskEngine : IRiskEngine
             Add(findings, "background-upload", $"İzleme başladığından beri {process.SentMegabytes:F1} MB gönderildi.");
         if (IsSuspiciousLaunch(process.Name, process.ParentName, process.CommandLine))
             Add(findings, "suspicious-launch-chain", $"Ebeveyn: {process.ParentName ?? "bilinmiyor"}; komut satırında şüpheli başlatma deseni gözlendi.");
-        AddTaskManagerEvasionFinding(process, history, lastTaskManagerStart, findings);
+        AddTaskManagerEvasionFinding(process, history, context.LastTaskManagerStart, findings);
+        var persistent = process.ExecutablePath is not null && context.PersistentPaths.Contains(process.ExecutablePath);
+        if (persistent) Add(findings, "persistent", "Çalışan dosya bir otomatik başlatma kaydıyla eşleşti.");
+        if (persistent && process.SignatureStatus == SignatureStatus.Invalid && process.ActiveConnections > 0)
+            Add(findings, "persistent-unsigned-network", "İmzasız kalıcı süreç etkin dış bağlantı kurdu.");
         var (score, level) = Score(findings);
         return new(process, score, level, findings) { SuppressedFindings = suppressed };
     }
@@ -70,6 +77,10 @@ public sealed class RiskEngine : IRiskEngine
             Add(findings, "pid-respawn", $"Aynı dosya {summary.PidCount} farklı PID ile gözlendi.");
         if (summary.SuspiciousLaunchChain)
             Add(findings, "suspicious-launch-chain", "Şüpheli ebeveyn/çocuk ilişkisi veya komut satırı deseni gözlendi.");
+        if (summary.Persistent)
+            Add(findings, "persistent", "Çalışan dosya bir otomatik başlatma kaydıyla eşleşti.");
+        if (summary.Persistent && summary.SignatureStatus == SignatureStatus.Invalid && summary.MaxConnections > 0)
+            Add(findings, "persistent-unsigned-network", "İmzasız kalıcı süreç etkin dış bağlantı kurdu.");
         var meaningful = summary.MaxCpu >= RuleSet.MeaningfulThresholds.PeakCpu ||
                          summary.CpuRange >= RuleSet.MeaningfulThresholds.CpuRange ||
                          summary.SentBytesInWindow >= RuleSet.MeaningfulThresholds.SentBytes ||

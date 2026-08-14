@@ -20,6 +20,8 @@ Signature status is reported as `Valid`, `ValidButExpired`, `Invalid`, or `Unava
 | `high-download` | 8 | A capture window receives at least 25 MB. | Updates, streaming, downloads, game assets. |
 | `pid-respawn` | 10 | The same executable identity appears under more than one PID in a capture. | Updaters, worker pools, normal restarts. |
 | `suspicious-launch-chain` | 20 | A script-capable child is launched by an office/browser/archive process, or its command line contains encoded, download, execution, or hidden-window patterns. | Administrative scripts, software deployment, developer automation. |
+| `persistent` | 15 | A running executable path or SHA-256 matches a read-only persistence inventory entry. | Expected services, startup applications, scheduled maintenance. |
+| `persistent-unsigned-network` | 30 | A persistent process has invalid signature status and an active remote connection. | Unsigned internal agents and self-hosted management tools. |
 
 Windowed captures also summarize sustained CPU, CPU range, sent and received deltas, recent binaries, hidden load, and PID reuse. These correlations reduce noise but must still be checked against executable path, SHA-256, publisher, role, and the complete timeline.
 

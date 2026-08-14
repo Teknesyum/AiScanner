@@ -22,6 +22,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     private readonly TelemetryStore _store = new();
     private readonly NetworkTelemetryCollector _network = new();
     private readonly TcpConnectionInspector _connections = new();
+    private readonly PersistenceInspector _persistenceInspector = new();
     private readonly List<UsageSample> _history = [];
     private readonly DispatcherTimer _timer = new() { Interval = TimeSpan.FromSeconds(4) };
     private bool _scanning;
@@ -50,8 +51,14 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     private bool _isEnglish;
     private readonly Dictionary<Control, string> _originalTexts = [];
     private readonly Dictionary<Run, string> _originalRunTexts = [];
+    private PersistenceEntry? _selectedPersistence;
+    private string _persistenceStatus = "Kalıcılık envanteri henüz taranmadı.";
+    private HashSet<string> _persistentPaths = new(OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal);
 
     public ObservableCollection<ProcessAssessment> Assessments { get; } = [];
+    public ObservableCollection<PersistenceEntry> PersistenceEntries { get; } = [];
+    public PersistenceEntry? SelectedPersistence { get => _selectedPersistence; set => Set(ref _selectedPersistence, value); }
+    public string PersistenceStatus { get => _persistenceStatus; private set => Set(ref _persistenceStatus, value); }
     public string Status { get => _status; private set => Set(ref _status, value); }
     public string ScanButtonText { get => _scanButtonText; private set => Set(ref _scanButtonText, value); }
     public string PromptStatus { get => _promptStatus; private set => Set(ref _promptStatus, value); }
@@ -82,7 +89,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     {
         InitializeComponent(); DataContext = this;
         _network.Start(); _timer.Tick += async (_, _) => await ScanAsync();
-        Opened += async (_, _) => { await ScanAsync(); _timer.Start(); };
+        Opened += async (_, _) => { await ScanAsync(); await RefreshPersistenceAsync(); await ScanAsync(); _timer.Start(); };
         Closed += (_, _) => { _timer.Stop(); _captureCancellation?.Cancel(); _network.Dispose(); };
     }
 
@@ -116,6 +123,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         LocalAnalysisReport = $"ÖLÇÜM DEVAM EDİYOR\nBaşlangıç: {started.LocalDateTime:G}\nSüre: {duration.TotalMinutes:0.##} dakika\n\nCPU, RAM, dosya kimliği ve platformun erişebildiği ağ sinyalleri örnekleniyor.";
         try
         {
+            await RefreshPersistenceAsync();
             await ScanAsync(true);
             while (DateTimeOffset.UtcNow < ends)
             {
@@ -123,6 +131,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
                 await Task.Delay(TimeSpan.FromSeconds(Math.Min(1, Math.Max(.1, left.TotalSeconds))), token);
             }
             await ScanAsync(true);
+            await RefreshPersistenceAsync();
             var result = await _store.CreateAnalysisBundleAsync(started, DateTimeOffset.UtcNow, duration, token);
             _bundlePath = result.Path; _bundleDuration = duration; _bundleSnapshots = result.Snapshots; _bundleObservations = result.Observations;
             LocalAnalysisReport = result.LocalReport; IsTimedReportVisible = true; HasCompletedAnalysis = true; PromptStatus = $"{L("Yerel analiz tamamlandı", "Local analysis completed")} • {result.Snapshots} {L("örnek", "snapshots")} • {result.Observations} {L("gözlem", "observations")}";
@@ -171,6 +180,13 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     }
 
     private void OpenDataFolder_Click(object? sender, RoutedEventArgs e) { Directory.CreateDirectory(_store.DataDirectory); OpenPath(_store.DataDirectory, false); }
+    private async void RefreshPersistence_Click(object? sender, RoutedEventArgs e) => await RefreshPersistenceAsync();
+    private void OpenPersistenceLocation_Click(object? sender, RoutedEventArgs e)
+    {
+        var path = SelectedPersistence?.ResolvedPath;
+        if (string.IsNullOrWhiteSpace(path) || !File.Exists(path)) { Status = "Kalıcılık dosyasına erişilemiyor"; return; }
+        OpenPath(path, true);
+    }
     private void OpenPromptLocation_Click(object? sender, RoutedEventArgs e)
     {
         if (string.IsNullOrWhiteSpace(_promptPath) || !File.Exists(_promptPath))
@@ -298,12 +314,31 @@ public partial class MainWindow : Window, INotifyPropertyChanged
             if (persist || _captureStart is not null) await _store.AppendAsync(processes, _network.IsAvailable, _network.Status);
             var taskmgr = processes.FirstOrDefault(x => x.Name.Equals("Taskmgr", StringComparison.OrdinalIgnoreCase)); if (taskmgr?.StartedAt is { } start) _taskManagerStart = start;
             _history.AddRange(processes.Select(x => new UsageSample(x.ProcessId, x.Name, x.CpuPercent, x.ObservedAt))); _history.RemoveAll(x => x.Timestamp < DateTimeOffset.UtcNow.AddMinutes(-2));
-            var selectedPid = SelectedAssessment?.Process.ProcessId; var results = processes.Select(x => _riskEngine.Assess(x, _history, _taskManagerStart)).OrderByDescending(x => x.Score).ThenBy(x => x.Process.Name).ToArray();
+            var selectedPid = SelectedAssessment?.Process.ProcessId; var context = new RiskContext(_taskManagerStart, _persistentPaths); var results = processes.Select(x => _riskEngine.Assess(x, _history, context)).OrderByDescending(x => x.Score).ThenBy(x => x.Process.Name).ToArray();
             Assessments.Clear(); foreach (var item in results) Assessments.Add(item); SelectedAssessment = Assessments.FirstOrDefault(x => x.Process.ProcessId == selectedPid);
             Status = $"{L("İzleniyor", "Monitoring")} • {PlatformName()} • {_network.Status}"; OnPropertyChanged(nameof(SummaryText));
         }
         catch (Exception ex) { Status = $"Hata: {ex.Message}"; }
         finally { _scanning = false; }
+    }
+
+    private async Task RefreshPersistenceAsync()
+    {
+        PersistenceStatus = L("Kalıcılık kaynakları salt okunur taranıyor...", "Scanning persistence sources read-only...");
+        try
+        {
+            var inventory = await _persistenceInspector.ScanAsync(Assessments.Select(x => x.Process).ToArray());
+            _store.SetPersistenceInventory(inventory);
+            PersistenceEntries.Clear();
+            foreach (var entry in inventory.Entries.OrderBy(x => x.Source).ThenBy(x => x.Name)) PersistenceEntries.Add(entry);
+            _persistentPaths = inventory.Entries.Select(x => x.ResolvedPath).Where(x => x is not null).Cast<string>()
+                .ToHashSet(OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal);
+            var unavailable = inventory.Sources.Where(x => !x.Available).Select(x => x.Source).ToArray();
+            PersistenceStatus = unavailable.Length == 0
+                ? $"{PersistenceEntries.Count} kalıcılık kaydı • tüm kaynaklar erişilebilir"
+                : $"{PersistenceEntries.Count} kalıcılık kaydı • kullanılamayan: {string.Join(", ", unavailable)}";
+        }
+        catch (Exception ex) { PersistenceStatus = $"Kalıcılık taraması tamamlanamadı: {ex.Message}"; }
     }
 
     private static string PlatformName() => OperatingSystem.IsWindows() ? "Windows" : OperatingSystem.IsLinux() ? "Linux" : OperatingSystem.IsMacOS() ? "macOS" : "Bilinmeyen OS";

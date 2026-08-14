@@ -19,9 +19,12 @@ public sealed class TelemetryStore
     private readonly SemaphoreSlim _gate = new(1, 1);
     private readonly string _collectorInstanceId = Guid.NewGuid().ToString("N");
     private readonly IRiskEngine _riskEngine;
+    private PersistenceInventory? _persistenceInventory;
 
     public string DataDirectory { get; }
     public string TelemetryPath => Path.Combine(DataDirectory, "telemetry.jsonl");
+
+    public void SetPersistenceInventory(PersistenceInventory inventory) => _persistenceInventory = inventory;
 
     public TelemetryStore(IRiskEngine? riskEngine = null)
     {
@@ -154,6 +157,9 @@ public sealed class TelemetryStore
                 group.Select(x => CommandLineRedactor.Redact(x.CommandLine)).Where(x => x is not null).Cast<string>().Distinct().Take(20).ToArray(),
                 group.Any(x => x.CommandLineAvailable), group.Any(x => x.ProcessTreeAvailable),
                 group.Any(x => RiskEngine.IsSuspiciousLaunch(x.Name, x.ParentName, x.CommandLine)),
+                _persistenceInventory?.Entries.Any(x =>
+                    x.ResolvedPath is not null && first.ExecutablePath is not null && string.Equals(x.ResolvedPath, first.ExecutablePath, OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal) ||
+                    x.Sha256 is not null && first.Sha256 is not null && string.Equals(x.Sha256, first.Sha256, StringComparison.OrdinalIgnoreCase)) == true,
                 sentDelta, receivedDelta, group.Max(x => x.ActiveConnections),
                 group.SelectMany(x => x.RemoteEndpoints).Distinct().Take(RuleSet.MeaningfulThresholds.MaxRemoteEndpoints).ToArray(),
                 recentFile, pidCount, group.Min(x => x.ObservedAt), group.Max(x => x.ObservedAt), milestones);
@@ -166,7 +172,7 @@ public sealed class TelemetryStore
             x.Summary.MaxCpu, x.Summary.AvgCpu, x.Summary.CpuRange, x.Summary.MaxRamMb, x.Summary.SignatureStatus,
             x.Summary.WindowVisibilityAvailable, x.Summary.Publishers,
             x.Summary.ParentNames, x.Summary.CommandLines, x.Summary.CommandLineAvailable,
-            x.Summary.ProcessTreeAvailable, x.Summary.SuspiciousLaunchChain,
+            x.Summary.ProcessTreeAvailable, x.Summary.SuspiciousLaunchChain, x.Summary.Persistent,
             x.Summary.SentBytesInWindow, x.Summary.ReceivedBytesInWindow, x.Summary.MaxConnections,
             x.Summary.RemoteEndpoints, x.Summary.RecentFile, x.Summary.PidCount, x.Summary.FirstSeenUtc,
             x.Summary.LastSeenUtc, x.Summary.Milestones,
@@ -196,12 +202,13 @@ public sealed class TelemetryStore
             guide = new
             {
                 purpose = "Windows süreç davranışının zaman serisi analizi",
-                readingOrder = new[] { "meta", "processSummaries", "processTree", "snapshots" },
+                readingOrder = new[] { "meta", "processSummaries", "persistence", "processTree", "snapshots" },
                 sections = new
                 {
                     meta = "İstenen zaman aralığı, örnek ve gözlem sayıları.",
                     processSummaries = "Dosya kimliğine göre gruplanmış hızlı indeks. Önce buradan yüksek CPU, imza durumu ve sıra dışı yolları seç.",
                     processTree = "Aday süreçlerin tekrarsız ebeveyn zinciri ve maskelenmiş komut satırları.",
+                    persistence = "Salt okunur otomatik başlatma envanteri; unavailable kaynaklar taranamadı demektir, boş oldukları anlamına gelmez.",
                     snapshots = "Kronolojik ham gözlemler. Ani yük düşüşü, süreç kaybolması/geri gelmesi ve Taskmgr davranışı için bunu kullan."
                 },
                 fieldHints = new
@@ -240,6 +247,7 @@ public sealed class TelemetryStore
                 filtering = "Sabit düşük CPU'lu, ağsız ve ek risk sinyali olmayan süreçler AI bağlamını korumak için çıkarıldı."
             },
             processSummaries = summaries,
+            persistence = _persistenceInventory,
             processTree = processTreeNodes.Values.OrderBy(x => x.ProcessId).ToArray(),
             snapshots = snapshots.Select((snapshot, index) => new
             {

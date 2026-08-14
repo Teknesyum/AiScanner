@@ -27,3 +27,7 @@ Click the prompt button after a scan or completed capture. If the AI cannot read
 ## What should I do with a suspicious result?
 
 Verify the full path, publisher, SHA-256, start time, network role, and time-series evidence. Scan the file with your security product or trusted analysis service before deleting it or terminating anything.
+
+## Does the persistence scan change startup settings?
+
+No. Registry keys, startup folders, scheduled tasks, services, systemd units, cron entries, shell profiles, launchd items, and login items are inventoried read-only. Sources that cannot be accessed are marked unavailable; ProcWitness does not disable or delete them.
