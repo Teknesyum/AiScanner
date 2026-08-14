@@ -3,6 +3,7 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using Avalonia.Controls;
+using Avalonia.Controls.Documents;
 using Avalonia.Interactivity;
 using Avalonia.Input.Platform;
 using Avalonia.Input;
@@ -48,6 +49,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     private bool _isTimedReportVisible;
     private bool _isEnglish;
     private readonly Dictionary<Control, string> _originalTexts = [];
+    private readonly Dictionary<Run, string> _originalRunTexts = [];
 
     public ObservableCollection<ProcessAssessment> Assessments { get; } = [];
     public string Status { get => _status; private set => Set(ref _status, value); }
@@ -231,6 +233,13 @@ public partial class MainWindow : Window, INotifyPropertyChanged
                     TranslateControl(box, box.PlaceholderText, value => box.PlaceholderText = value);
                     break;
             }
+        }
+
+        foreach (var run in this.GetLogicalDescendants().OfType<Run>())
+        {
+            if (string.IsNullOrWhiteSpace(run.Text)) continue;
+            if (!_originalRunTexts.ContainsKey(run)) _originalRunTexts[run] = run.Text;
+            run.Text = _isEnglish ? UiTranslator.ToEnglish(_originalRunTexts[run]) : _originalRunTexts[run];
         }
 
         if (sender is Button languageButton) languageButton.Content = _isEnglish ? "TR" : "EN";
