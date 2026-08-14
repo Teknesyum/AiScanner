@@ -1,4 +1,4 @@
-namespace AiScanner.App;
+namespace ProcWitness.App;
 
 internal static class UiTranslator
 {
@@ -17,9 +17,9 @@ internal static class UiTranslator
         ["YAYINCI"] = "PUBLISHER",
         ["BULGULAR"] = "FINDINGS",
         ["SÜRELİ ANALİZ RAPORU"] = "TIMED ANALYSIS REPORT",
-        ["5 ADIMDA AI SCANNER"] = "AI SCANNER IN 5 STEPS",
+        ["5 ADIMDA PROCWITNESS"] = "PROCWITNESS IN 5 STEPS",
         ["Tarama ve AI raporu için kısa kullanım rehberi"] = "Quick guide to scanning and AI reports",
-        ["AI SCANNER TEKNİK REHBERİ"] = "AI SCANNER TECHNICAL GUIDE",
+        ["PROCWITNESS TEKNİK REHBERİ"] = "PROCWITNESS TECHNICAL GUIDE",
         ["Analiz süresini seçin"] = "Choose analysis duration",
         ["Seçimden sonra pencere kapanır ve geri sayım Şimdi Tara düğmesinde görünür."] = "The menu closes after selection and the countdown appears on Scan Now.",
         ["1 dakika"] = "1 minute",
@@ -61,7 +61,7 @@ internal static class UiTranslator
         ["• Windows: ETW upload/download + IP Helper\n• Linux: /proc soket–PID eşleştirmesi\n• macOS: lsof ile etkin TCP uçları\n• Uzak IP ve portlar süreçle ilişkilendirilir\n• Ölçüm yoksa 0 B güvenli kabul edilmez"] = "• Windows: ETW bytes + IP Helper\n• Linux: /proc socket-to-PID mapping\n• macOS: active TCP endpoints via lsof\n• Remote IPs and ports are linked to processes\n• Missing telemetry is never treated as zero traffic",
         ["• 1, 5, 10, 20 veya özel dakika\n• Yaklaşık 4 saniyede bir yeni örnek\n• Canlı geri sayım\n• Eski veriler oturuma karıştırılmaz\n• Yalnızca gerçek başlangıç–bitiş aralığı raporlanır"] = "• 1, 5, 10, 20 or custom minutes\n• New sample about every 4 seconds\n• Live countdown\n• Previous data is excluded\n• Only the exact capture window is reported",
         ["• Sabit ve düşük yük üreten süreçleri eler\n• CPU sıçraması olanları korur\n• Ağ / yeni dosya / imza sinyalini korur\n• PID değişimini gözden kaçırmaz\n• AI’a yalnızca anlamlı adayları verir"] = "• Removes stable low-load noise\n• Keeps CPU spikes\n• Keeps network, new-file and signature signals\n• Preserves PID changes\n• Sends only meaningful candidates to AI",
-        ["• Tüm kayıtlar AiScanner/data içinde yereldir\n• Veriler otomatik olarak internete gönderilmez\n• 256 MB sonrası son 7 gün korunarak sıkıştırılır\n• Dosya silmez, karantinaya almaz, süreç kapatmaz\n• Son karar: hash + yayıncı + antivirüs/EDR"] = "• All evidence stays under AiScanner/data\n• Nothing is uploaded automatically\n• Above 256 MB, the latest 7 days are retained\n• No deletion, quarantine or process termination\n• Final decision: hash + publisher + antivirus/EDR"
+        ["• Tüm kayıtlar ProcWitness/data içinde yereldir\n• Veriler otomatik olarak internete gönderilmez\n• 256 MB sonrası son 7 gün korunarak sıkıştırılır\n• Dosya silmez, karantinaya almaz, süreç kapatmaz\n• Son karar: hash + yayıncı + antivirüs/EDR"] = "• All evidence stays under ProcWitness/data\n• Nothing is uploaded automatically\n• Above 256 MB, the latest 7 days are retained\n• No deletion, quarantine or process termination\n• Final decision: hash + publisher + antivirus/EDR"
     };
 
     public static string ToEnglish(string value) => English.TryGetValue(value, out var translated) ? translated : value;

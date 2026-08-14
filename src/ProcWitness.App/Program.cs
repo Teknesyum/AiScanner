@@ -1,6 +1,6 @@
 using Avalonia;
 
-namespace AiScanner.App;
+namespace ProcWitness.App;
 
 internal static class Program
 {

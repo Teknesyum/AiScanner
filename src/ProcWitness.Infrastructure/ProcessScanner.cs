@@ -2,9 +2,9 @@ using System.Diagnostics;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Runtime.InteropServices;
-using AiScanner.Core;
+using ProcWitness.Core;
 
-namespace AiScanner.Infrastructure;
+namespace ProcWitness.Infrastructure;
 
 public sealed class ProcessScanner
 {

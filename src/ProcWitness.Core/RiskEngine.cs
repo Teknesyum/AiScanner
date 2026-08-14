@@ -1,4 +1,4 @@
-namespace AiScanner.Core;
+namespace ProcWitness.Core;
 
 public sealed class RiskEngine : IRiskEngine
 {

@@ -1,5 +1,5 @@
-<Window xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" x:Class="AiScanner.App.MainWindow"
-        Title="AI Scanner" Width="1280" Height="860" MinWidth="1000" MinHeight="680" Background="#050509" Foreground="#E6FAFF" WindowStartupLocation="CenterScreen">
+<Window xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" x:Class="ProcWitness.App.MainWindow"
+        Title="ProcWitness" Width="1280" Height="860" MinWidth="1000" MinHeight="680" Background="#050509" Foreground="#E6FAFF" WindowStartupLocation="CenterScreen">
   <Window.Styles>
     <Style Selector="Button"><Setter Property="Background" Value="#111522"/><Setter Property="Foreground" Value="#00F3FF"/><Setter Property="BorderBrush" Value="#00F3FF"/><Setter Property="BorderThickness" Value="1"/><Setter Property="Padding" Value="16,9"/><Setter Property="CornerRadius" Value="5"/></Style>
     <Style Selector="Button:pointerover"><Setter Property="Background" Value="#15303B"/><Setter Property="Foreground" Value="White"/></Style>
@@ -14,7 +14,7 @@
   </Window.Styles>
   <Grid RowDefinitions="64,Auto,*,38">
     <Border Grid.Row="0" Background="#090C13" BorderBrush="#3300F3FF" BorderThickness="0,0,0,1" Padding="22,0">
-      <Grid ColumnDefinitions="Auto,*,Auto"><Image Width="38" Height="38" Source="avares://AiScanner/Assets/AiScannerIcon.png" VerticalAlignment="Center"/><StackPanel Grid.Column="1" Margin="14,0" VerticalAlignment="Center"><TextBlock FontSize="22" FontWeight="Bold" Foreground="#00F3FF" Text="AI SCANNER"/><TextBlock Foreground="#718097" Text="CROSS-PLATFORM PROCESS INTELLIGENCE"/></StackPanel><TextBlock Grid.Column="2" VerticalAlignment="Center" Foreground="#39FF14" Text="●  {Binding Status}"/></Grid>
+      <Grid ColumnDefinitions="Auto,*,Auto"><Image Width="38" Height="38" Source="avares://ProcWitness/Assets/ProcWitnessIcon.png" VerticalAlignment="Center"/><StackPanel Grid.Column="1" Margin="14,0" VerticalAlignment="Center"><TextBlock FontSize="22" FontWeight="Bold" Foreground="#00F3FF" Text="PROCWITNESS"/><TextBlock Foreground="#718097" Text="CROSS-PLATFORM PROCESS INTELLIGENCE"/></StackPanel><TextBlock Grid.Column="2" VerticalAlignment="Center" Foreground="#39FF14" Text="●  {Binding Status}"/></Grid>
     </Border>
     <Border Grid.Row="1" IsVisible="{Binding IsPromptNotificationVisible}" Background="#122D1B" BorderBrush="#39FF14" BorderThickness="1" CornerRadius="6" Margin="18,8,18,0" Padding="14,10"><TextBlock HorizontalAlignment="Center" FontSize="15" FontWeight="Bold" Foreground="#7CFF68" Text="✓ Analiz promptu panoya kopyalandı"/></Border>
     <TabControl Grid.Row="2" Margin="18,8">
@@ -33,7 +33,7 @@
       </TabItem>
       <TabItem Header="Nasıl Kullanılır?">
         <ScrollViewer><Viewbox Stretch="Uniform" StretchDirection="UpOnly" HorizontalAlignment="Center" MaxWidth="1250"><StackPanel Width="1000" Margin="24">
-          <TextBlock HorizontalAlignment="Center" FontSize="30" FontWeight="Bold" Foreground="#39FF14" Text="5 ADIMDA AI SCANNER"/>
+          <TextBlock HorizontalAlignment="Center" FontSize="30" FontWeight="Bold" Foreground="#39FF14" Text="5 ADIMDA PROCWITNESS"/>
           <TextBlock Margin="0,8,0,24" HorizontalAlignment="Center" Foreground="#AAB8CA" FontSize="16" Text="Tarama ve AI raporu için kısa kullanım rehberi"/>
           <Border Classes="card" BorderBrush="#00F3FF"><TextBlock Classes="step"><Run Foreground="#00F3FF" FontWeight="Bold" Text="1 • ŞİMDİ TARA  "/><Run Text="Tarama sekmesindeki düğmeye basın. Çalışan süreçler yerel olarak incelenir. Bir süreci seçerek yolunu, SHA-256 değerini ve yayıncısını görün."/></TextBlock></Border>
           <Border Classes="card" BorderBrush="#C779FF"><TextBlock Classes="step"><Run Foreground="#C779FF" FontWeight="Bold" Text="2 • SÜRELİ DİNLE  "/><Run Text="Süreli Analiz sekmesinden 1, 5, 10, 20 veya özel dakika seçin. Program süre dolana kadar veri toplar. Miner ve aralıklı casus yazılım davranışları için 10–20 dakika önerilir."/></TextBlock></Border>
@@ -43,7 +43,7 @@
         </StackPanel></Viewbox></ScrollViewer>
       </TabItem>
       <TabItem Header="Bilgi">
-        <ScrollViewer><StackPanel MaxWidth="1500" HorizontalAlignment="Stretch" Margin="28"><Image Width="82" Height="82" Source="avares://AiScanner/Assets/AiScannerIcon.png"/><TextBlock HorizontalAlignment="Center" Margin="0,12,0,6" FontSize="30" FontWeight="Bold" Foreground="#00F3FF" Text="AI SCANNER TEKNİK REHBERİ"/><TextBlock MaxWidth="1300" HorizontalAlignment="Center" TextAlignment="Center" Classes="body" Margin="0,0,0,24" Text="CPU, RAM, dosya kimliği, imza, bağlantı ve zaman içindeki davranışı birlikte inceleyen yerel telemetri ve önceliklendirme sistemi."/>
+        <ScrollViewer><StackPanel MaxWidth="1500" HorizontalAlignment="Stretch" Margin="28"><Image Width="82" Height="82" Source="avares://ProcWitness/Assets/ProcWitnessIcon.png"/><TextBlock HorizontalAlignment="Center" Margin="0,12,0,6" FontSize="30" FontWeight="Bold" Foreground="#00F3FF" Text="PROCWITNESS TEKNİK REHBERİ"/><TextBlock MaxWidth="1300" HorizontalAlignment="Center" TextAlignment="Center" Classes="body" Margin="0,0,0,24" Text="CPU, RAM, dosya kimliği, imza, bağlantı ve zaman içindeki davranışı birlikte inceleyen yerel telemetri ve önceliklendirme sistemi."/>
           <Border Classes="card"><StackPanel><TextBlock Classes="title" Text="01 • VERİ TOPLAMA"/><TextBlock Classes="body" Text="• PID, süreç adı ve başlangıç zamanı&#10;• CPU ve fiziksel RAM kullanımı&#10;• Dosya yolu, oluşturulma zamanı ve SHA-256&#10;• Windows Authenticode / macOS codesign&#10;• Ölçülemeyen özellikler risk sayılmaz"/></StackPanel></Border>
           <Border Classes="card"><StackPanel><TextBlock Classes="title" Text="02 • AĞ GÖZLEMİ"/><TextBlock Classes="body" Text="• Windows: ETW upload/download + IP Helper&#10;• Linux: /proc soket–PID eşleştirmesi&#10;• macOS: lsof ile etkin TCP uçları&#10;• Uzak IP ve portlar süreçle ilişkilendirilir&#10;• Ölçüm yoksa 0 B güvenli kabul edilmez"/></StackPanel></Border>
           <Border Classes="card"><StackPanel><TextBlock Classes="title" Text="03 • SÜRELİ DİNLEME"/><TextBlock Classes="body" Text="• 1, 5, 10, 20 veya özel dakika&#10;• Yaklaşık 4 saniyede bir yeni örnek&#10;• Canlı geri sayım&#10;• Eski veriler oturuma karıştırılmaz&#10;• Yalnızca gerçek başlangıç–bitiş aralığı raporlanır"/></StackPanel></Border>
@@ -55,7 +55,7 @@
           <Border Classes="card"><StackPanel><TextBlock Classes="title" Text="09 • MINER / KAÇINMA TESPİTİ"/><TextBlock Classes="body" Text="• Sürekli yüksek CPU + penceresiz çalışma&#10;• Yazılabilir dizin + doğrulanamayan yayıncı&#10;• Görev Yöneticisi öncesi 20 sn incelenir&#10;• Açıldıktan sonraki 15 sn ile karşılaştırılır&#10;• ≥ %30 yükün %5’e / beşte birine düşmesi işaretlenir"/></StackPanel></Border>
           <Border Classes="card"><StackPanel><TextBlock Classes="title" Text="10 • AĞ VE VERİ AKIŞI"/><TextBlock Classes="body" Text="• Sayaç farkları PID bazında hesaplanır&#10;• Upload ≥ 256 KB: anlamlı değişim&#10;• Upload ≥ 10 MB: yüksek sinyal&#10;• Download ≥ 25 MB: dikkat sinyali&#10;• Uzak IP/port ve süreç türü birlikte yorumlanır"/></StackPanel></Border>
           <Border Classes="card"><StackPanel><TextBlock Classes="title" Text="11 • AI VERİ PAKETİ"/><TextBlock Classes="body" Text="• Tepe CPU &lt; %15 ve değişim &lt; 12 ise gürültü elenir&#10;• Ağ / yeni dosya / imza / PID sinyali korunur&#10;• Adaylar yerel risk skoruyla sıralanır&#10;• Yalnızca anlamlı zaman noktaları eklenir&#10;• AI’dan kanıt, belirsizlik ve yanlış pozitif istenir"/></StackPanel></Border>
-          <Border Classes="card"><StackPanel><TextBlock Classes="title" Text="12 • MAHREMİYET VE SINIRLAR"/><TextBlock Classes="body" Text="• Tüm kayıtlar AiScanner/data içinde yereldir&#10;• Veriler otomatik olarak internete gönderilmez&#10;• 256 MB sonrası son 7 gün korunarak sıkıştırılır&#10;• Dosya silmez, karantinaya almaz, süreç kapatmaz&#10;• Son karar: hash + yayıncı + antivirüs/EDR"/></StackPanel></Border>
+          <Border Classes="card"><StackPanel><TextBlock Classes="title" Text="12 • MAHREMİYET VE SINIRLAR"/><TextBlock Classes="body" Text="• Tüm kayıtlar ProcWitness/data içinde yereldir&#10;• Veriler otomatik olarak internete gönderilmez&#10;• 256 MB sonrası son 7 gün korunarak sıkıştırılır&#10;• Dosya silmez, karantinaya almaz, süreç kapatmaz&#10;• Son karar: hash + yayıncı + antivirüs/EDR"/></StackPanel></Border>
         </StackPanel></ScrollViewer>
       </TabItem>
     </TabControl>

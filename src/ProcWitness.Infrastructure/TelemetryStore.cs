@@ -1,7 +1,7 @@
 using System.Text.Json;
-using AiScanner.Core;
+using ProcWitness.Core;
 
-namespace AiScanner.Infrastructure;
+namespace ProcWitness.Infrastructure;
 
 public sealed record TelemetrySnapshot(
     DateTimeOffset CapturedAt,
@@ -19,9 +19,27 @@ public sealed class TelemetryStore
     private readonly SemaphoreSlim _gate = new(1, 1);
     private readonly string _collectorInstanceId = Guid.NewGuid().ToString("N");
 
-    public string DataDirectory { get; } = Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "AiScanner", "data");
+    public string DataDirectory { get; }
     public string TelemetryPath => Path.Combine(DataDirectory, "telemetry.jsonl");
+
+    public TelemetryStore()
+    {
+        var localData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+        DataDirectory = Path.Combine(localData, "ProcWitness", "data");
+        MigrateLegacyData(Path.Combine(localData, "Ai" + "Scanner", "data"), DataDirectory);
+    }
+
+    internal static void MigrateLegacyData(string legacyDirectory, string targetDirectory)
+    {
+        if (!Directory.Exists(legacyDirectory) || Directory.Exists(targetDirectory)) return;
+        try
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(targetDirectory)!);
+            Directory.Move(legacyDirectory, targetDirectory);
+        }
+        catch (IOException) { }
+        catch (UnauthorizedAccessException) { }
+    }
 
     public async Task AppendAsync(
         IReadOnlyList<ProcessObservation> processes,
@@ -171,7 +189,7 @@ public sealed class TelemetryStore
 
         var bundle = new
         {
-            schema = "aiscanner.analysis-bundle.v1",
+            schema = "procwitness.analysis-bundle.v2",
             guide = new
             {
                 purpose = "Windows süreç davranışının zaman serisi analizi",

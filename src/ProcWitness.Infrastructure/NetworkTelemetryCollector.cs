@@ -3,7 +3,7 @@ using Microsoft.Diagnostics.Tracing.Parsers;
 using Microsoft.Diagnostics.Tracing.Parsers.Kernel;
 using Microsoft.Diagnostics.Tracing.Session;
 
-namespace AiScanner.Infrastructure;
+namespace ProcWitness.Infrastructure;
 
 public sealed record ProcessNetworkUsage(long SentBytes, long ReceivedBytes);
 
@@ -26,7 +26,7 @@ public sealed class NetworkTelemetryCollector : IDisposable
         }
         try
         {
-            _session = new TraceEventSession($"AiScanner-Network-{Environment.ProcessId}") { StopOnDispose = true };
+            _session = new TraceEventSession($"ProcWitness-Network-{Environment.ProcessId}") { StopOnDispose = true };
             _session.EnableKernelProvider(KernelTraceEventParser.Keywords.NetworkTCPIP);
             _session.Source.Kernel.TcpIpSend += data => AddSent(data.ProcessID, data.size);
             _session.Source.Kernel.TcpIpRecv += data => AddReceived(data.ProcessID, data.size);

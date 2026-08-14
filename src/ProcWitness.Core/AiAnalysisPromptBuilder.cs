@@ -1,6 +1,6 @@
 using System.Text.Json;
 
-namespace AiScanner.Core;
+namespace ProcWitness.Core;
 
 public sealed class AiAnalysisPromptBuilder
 {
@@ -38,7 +38,7 @@ public sealed class AiAnalysisPromptBuilder
 
         var payload = new
         {
-            schema = "aiscanner.process-assessment.v1",
+            schema = "procwitness.process-assessment.v2",
             generatedAtUtc = generatedAt.UtcDateTime,
             device = new
             {
@@ -79,7 +79,7 @@ public sealed class AiAnalysisPromptBuilder
             İSTENEN ARALIK: Son {{duration.TotalMinutes:0.##}} dakika
             İÇERİK: {{snapshots}} zaman örneği, {{observations}} süreç gözlemi
 
-            Veri toplama, zaman aralığı seçimi, önemsiz süreçlerin elenmesi, dönemsel farkların hesaplanması ve ilk risk puanlaması AI Scanner'ın yerel motoru tarafından zaten tamamlandı. Senin görevin veri toplamak veya bütün ham süreçleri yeniden ayıklamak değil; hazır bulguları güvenlik uzmanı olarak yorumlamak, çelişkileri kontrol etmek ve anlaşılır nihai rapor yazmaktır.
+            Veri toplama, zaman aralığı seçimi, önemsiz süreçlerin elenmesi, dönemsel farkların hesaplanması ve ilk risk puanlaması ProcWitness'ın yerel motoru tarafından zaten tamamlandı. Senin görevin veri toplamak veya bütün ham süreçleri yeniden ayıklamak değil; hazır bulguları güvenlik uzmanı olarak yorumlamak, çelişkileri kontrol etmek ve anlaşılır nihai rapor yazmaktır.
 
             Önce analiz dosyasını oku. Yerel dosya sistemine erişimin yoksa kullanıcıdan bu JSON dosyasını sohbete yüklemesini iste; dosyayı okumadan ayrıntılı sonuç uydurma.
             Dosyada guide.readingOrder sırasını izle:

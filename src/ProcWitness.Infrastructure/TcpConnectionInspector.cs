@@ -2,7 +2,7 @@ using System.Diagnostics;
 using System.Net;
 using System.Runtime.InteropServices;
 
-namespace AiScanner.Infrastructure;
+namespace ProcWitness.Infrastructure;
 
 public sealed class TcpConnectionInspector
 {

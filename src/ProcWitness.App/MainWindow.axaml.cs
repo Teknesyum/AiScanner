@@ -9,10 +9,10 @@ using Avalonia.Input.Platform;
 using Avalonia.Input;
 using Avalonia.LogicalTree;
 using Avalonia.Threading;
-using AiScanner.Core;
-using AiScanner.Infrastructure;
+using ProcWitness.Core;
+using ProcWitness.Infrastructure;
 
-namespace AiScanner.App;
+namespace ProcWitness.App;
 
 public partial class MainWindow : Window, INotifyPropertyChanged
 {

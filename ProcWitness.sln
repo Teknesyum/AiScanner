@@ -3,13 +3,13 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.0.31903.59
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AiScanner.Core", "src\AiScanner.Core\AiScanner.Core.csproj", "{16828F17-0E66-4F96-8798-0C74DB176E51}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ProcWitness.Core", "src\ProcWitness.Core\ProcWitness.Core.csproj", "{16828F17-0E66-4F96-8798-0C74DB176E51}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AiScanner.Infrastructure", "src\AiScanner.Infrastructure\AiScanner.Infrastructure.csproj", "{2F8C4899-167B-480E-A4C5-9C08F4149918}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ProcWitness.Infrastructure", "src\ProcWitness.Infrastructure\ProcWitness.Infrastructure.csproj", "{2F8C4899-167B-480E-A4C5-9C08F4149918}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AiScanner.App", "src\AiScanner.App\AiScanner.App.csproj", "{9D97C193-7022-442A-9C49-AE162634E5F0}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ProcWitness.App", "src\ProcWitness.App\ProcWitness.App.csproj", "{9D97C193-7022-442A-9C49-AE162634E5F0}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AiScanner.Tests", "tests\AiScanner.Tests\AiScanner.Tests.csproj", "{93A140C9-F6D0-4DBA-91EB-C3FE1B8D6B4A}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ProcWitness.Tests", "tests\ProcWitness.Tests\ProcWitness.Tests.csproj", "{93A140C9-F6D0-4DBA-91EB-C3FE1B8D6B4A}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

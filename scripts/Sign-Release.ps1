@@ -1,6 +1,6 @@
 param(
     [Parameter(Mandatory = $true)][string]$CertificateThumbprint,
-    [string]$Executable = "$PSScriptRoot\..\src\AiScanner.App\bin\Release\net9.0-windows\win-x64\publish\AiScanner.exe"
+    [string]$Executable = "$PSScriptRoot\..\src\ProcWitness.App\bin\Release\net9.0-windows\win-x64\publish\ProcWitness.exe"
 )
 
 $certificate = Get-Item "Cert:\CurrentUser\My\$CertificateThumbprint" -ErrorAction Stop

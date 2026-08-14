@@ -13,6 +13,7 @@
     </PackageReference>
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\src\AiScanner.Core\AiScanner.Core.csproj" />
+    <ProjectReference Include="..\..\src\ProcWitness.Core\ProcWitness.Core.csproj" />
+    <ProjectReference Include="..\..\src\ProcWitness.Infrastructure\ProcWitness.Infrastructure.csproj" />
   </ItemGroup>
 </Project>

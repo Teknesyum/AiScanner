@@ -1,4 +1,4 @@
-namespace AiScanner.Core;
+namespace ProcWitness.Core;
 
 public enum RiskLevel { Clean, Low, Medium, High, Critical }
 

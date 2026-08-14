@@ -1,7 +1,7 @@
-using AiScanner.Core;
+using ProcWitness.Core;
 using Xunit;
 
-namespace AiScanner.Tests;
+namespace ProcWitness.Tests;
 
 public sealed class RiskEngineTests
 {

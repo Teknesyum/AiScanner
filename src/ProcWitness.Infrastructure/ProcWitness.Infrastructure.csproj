@@ -3,7 +3,8 @@
     <TargetFramework>net9.0</TargetFramework>
   </PropertyGroup>
   <ItemGroup>
-    <ProjectReference Include="..\AiScanner.Core\AiScanner.Core.csproj" />
+    <ProjectReference Include="..\ProcWitness.Core\ProcWitness.Core.csproj" />
     <PackageReference Include="Microsoft.Diagnostics.Tracing.TraceEvent" Version="3.2.5" />
+    <InternalsVisibleTo Include="ProcWitness.Tests" />
   </ItemGroup>
 </Project>
