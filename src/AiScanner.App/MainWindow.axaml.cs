@@ -6,6 +6,7 @@ using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Avalonia.Input.Platform;
 using Avalonia.Input;
+using Avalonia.LogicalTree;
 using Avalonia.Threading;
 using AiScanner.Core;
 using AiScanner.Infrastructure;
@@ -45,6 +46,8 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     private string _promptButtonBorder = "#00F3FF";
     private int _promptFeedbackVersion;
     private bool _isTimedReportVisible;
+    private bool _isEnglish;
+    private readonly Dictionary<Control, string> _originalTexts = [];
 
     public ObservableCollection<ProcessAssessment> Assessments { get; } = [];
     public string Status { get => _status; private set => Set(ref _status, value); }
@@ -83,10 +86,10 @@ public partial class MainWindow : Window, INotifyPropertyChanged
 
     private async void ScanNow_Click(object? sender, RoutedEventArgs e)
     {
-        if (_captureStart is not null) { PromptStatus = "Süreli ölçüm devam ederken anlık tarama başlatılamaz"; return; }
+        if (_captureStart is not null) { PromptStatus = L("Süreli ölçüm devam ederken anlık tarama başlatılamaz", "An instant scan cannot start during timed analysis"); return; }
         await ScanAsync(true); _instantReady = Assessments.Count > 0; HasCompletedAnalysis = _instantReady;
         _bundlePath = null; _promptPath = null; OnPropertyChanged(nameof(HasPromptFile));
-        PromptStatus = _instantReady ? "Anlık tarama hazır • prompt oluşturabilirsiniz" : "Okunabilir süreç bulunamadı";
+        PromptStatus = _instantReady ? L("Anlık tarama hazır • prompt oluşturabilirsiniz", "Instant scan ready • you can copy the prompt") : L("Okunabilir süreç bulunamadı", "No readable processes found");
     }
 
     private async void Duration_Click(object? sender, RoutedEventArgs e)
@@ -104,7 +107,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
 
     private async Task StartTimedAsync(TimeSpan duration)
     {
-        if (_captureStart is not null) { PromptStatus = "Bir ölçüm zaten devam ediyor"; return; }
+        if (_captureStart is not null) { PromptStatus = L("Bir ölçüm zaten devam ediyor", "A timed analysis is already running"); return; }
         _captureCancellation = new(); var token = _captureCancellation.Token;
         var started = DateTimeOffset.UtcNow; var ends = started + duration; _captureStart = started;
         HasCompletedAnalysis = false; IsTimedReportVisible = false; _instantReady = false; _bundlePath = null; _promptPath = null; OnPropertyChanged(nameof(HasPromptFile));
@@ -114,17 +117,17 @@ public partial class MainWindow : Window, INotifyPropertyChanged
             await ScanAsync(true);
             while (DateTimeOffset.UtcNow < ends)
             {
-                var left = ends - DateTimeOffset.UtcNow; ScanButtonText = $"Analiz Yapılıyor • {(int)left.TotalMinutes:00}:{left.Seconds:00}"; PromptStatus = $"Dinleniyor • kalan {(int)left.TotalMinutes:00}:{left.Seconds:00}";
+                var left = ends - DateTimeOffset.UtcNow; ScanButtonText = $"{L("Analiz Yapılıyor", "Analyzing")} • {(int)left.TotalMinutes:00}:{left.Seconds:00}"; PromptStatus = $"{L("Dinleniyor • kalan", "Monitoring • remaining")} {(int)left.TotalMinutes:00}:{left.Seconds:00}";
                 await Task.Delay(TimeSpan.FromSeconds(Math.Min(1, Math.Max(.1, left.TotalSeconds))), token);
             }
             await ScanAsync(true);
             var result = await _store.CreateAnalysisBundleAsync(started, DateTimeOffset.UtcNow, duration, token);
             _bundlePath = result.Path; _bundleDuration = duration; _bundleSnapshots = result.Snapshots; _bundleObservations = result.Observations;
-            LocalAnalysisReport = result.LocalReport; IsTimedReportVisible = true; HasCompletedAnalysis = true; PromptStatus = $"Yerel analiz tamamlandı • {result.Snapshots} örnek • {result.Observations} gözlem";
+            LocalAnalysisReport = result.LocalReport; IsTimedReportVisible = true; HasCompletedAnalysis = true; PromptStatus = $"{L("Yerel analiz tamamlandı", "Local analysis completed")} • {result.Snapshots} {L("örnek", "snapshots")} • {result.Observations} {L("gözlem", "observations")}";
         }
         catch (OperationCanceledException) { PromptStatus = "Ölçüm iptal edildi"; }
         catch (Exception ex) { PromptStatus = $"Analiz oluşturulamadı: {ex.Message}"; }
-        finally { _captureStart = null; ScanButtonText = "Şimdi tara"; _captureCancellation?.Dispose(); _captureCancellation = null; }
+        finally { _captureStart = null; ScanButtonText = L("Şimdi tara", "Scan Now"); _captureCancellation?.Dispose(); _captureCancellation = null; }
     }
 
     private async void CreatePrompt_Click(object? sender, RoutedEventArgs e)
@@ -208,6 +211,40 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     private void OpenSponsor_Click(object? sender, RoutedEventArgs e) => OpenWebAddress("https://github.com/sponsors/Teknesyum");
     private void OpenGitHub_Click(object? sender, RoutedEventArgs e) => OpenWebAddress("https://github.com/Teknesyum");
 
+    private void ToggleLanguage_Click(object? sender, RoutedEventArgs e)
+    {
+        _isEnglish = !_isEnglish;
+        foreach (var control in this.GetLogicalDescendants().OfType<Control>())
+        {
+            switch (control)
+            {
+                case TextBlock text when !string.IsNullOrWhiteSpace(text.Text):
+                    TranslateControl(text, text.Text, value => text.Text = value);
+                    break;
+                case Button button when button.Content is string content:
+                    TranslateControl(button, content, value => button.Content = value);
+                    break;
+                case TabItem tab when tab.Header is string header:
+                    TranslateControl(tab, header, value => tab.Header = value);
+                    break;
+                case TextBox box when !string.IsNullOrWhiteSpace(box.PlaceholderText):
+                    TranslateControl(box, box.PlaceholderText, value => box.PlaceholderText = value);
+                    break;
+            }
+        }
+
+        if (sender is Button languageButton) languageButton.Content = _isEnglish ? "TR" : "EN";
+        if (_captureStart is null) ScanButtonText = _isEnglish ? "Scan Now" : "Şimdi tara";
+        if (!IsPromptNotificationVisible) PromptButtonText = _isEnglish ? "Copy Prompt" : "Promptu Kopyala";
+        Status = _isEnglish ? "Language: English" : "Dil: Türkçe";
+    }
+
+    private void TranslateControl(Control control, string current, Action<string> assign)
+    {
+        if (!_originalTexts.ContainsKey(control)) _originalTexts[control] = current;
+        assign(_isEnglish ? UiTranslator.ToEnglish(_originalTexts[control]) : _originalTexts[control]);
+    }
+
     private void OpenWebAddress(string address)
     {
         try { Process.Start(new ProcessStartInfo(address) { UseShellExecute = true }); }
@@ -221,11 +258,9 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         OpenPath(path, true);
     }
 
-    private void ProcessName_PointerPressed(object? sender, PointerPressedEventArgs e)
+    private void ProcessList_DoubleTapped(object? sender, TappedEventArgs e)
     {
-        if (sender is not Control { DataContext: ProcessAssessment assessment }) return;
-        SelectedAssessment = assessment;
-        var path = assessment.Process.ExecutablePath;
+        var path = SelectedAssessment?.Process.ExecutablePath;
         if (string.IsNullOrWhiteSpace(path) || !File.Exists(path)) { Status = "Seçili dosyaya erişilemiyor"; return; }
         OpenPath(path, true);
         e.Handled = true;
@@ -246,7 +281,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
 
     private async Task ScanAsync(bool persist = false)
     {
-        if (_scanning) return; _scanning = true; Status = "Taranıyor";
+        if (_scanning) return; _scanning = true; Status = L("Taranıyor", "Scanning");
         try
         {
             var endpoints = _connections.GetRemoteEndpoints();
@@ -256,13 +291,14 @@ public partial class MainWindow : Window, INotifyPropertyChanged
             _history.AddRange(processes.Select(x => new UsageSample(x.ProcessId, x.Name, x.CpuPercent, x.ObservedAt))); _history.RemoveAll(x => x.Timestamp < DateTimeOffset.UtcNow.AddMinutes(-2));
             var selectedPid = SelectedAssessment?.Process.ProcessId; var results = processes.Select(x => _riskEngine.Assess(x, _history, _taskManagerStart)).OrderByDescending(x => x.Score).ThenBy(x => x.Process.Name).ToArray();
             Assessments.Clear(); foreach (var item in results) Assessments.Add(item); SelectedAssessment = Assessments.FirstOrDefault(x => x.Process.ProcessId == selectedPid);
-            Status = $"İzleniyor • {PlatformName()} • {_network.Status}"; OnPropertyChanged(nameof(SummaryText));
+            Status = $"{L("İzleniyor", "Monitoring")} • {PlatformName()} • {_network.Status}"; OnPropertyChanged(nameof(SummaryText));
         }
         catch (Exception ex) { Status = $"Hata: {ex.Message}"; }
         finally { _scanning = false; }
     }
 
     private static string PlatformName() => OperatingSystem.IsWindows() ? "Windows" : OperatingSystem.IsLinux() ? "Linux" : OperatingSystem.IsMacOS() ? "macOS" : "Bilinmeyen OS";
+    private string L(string turkish, string english) => _isEnglish ? english : turkish;
     private bool Set<T>(ref T field, T value, [CallerMemberName] string? name = null) { if (EqualityComparer<T>.Default.Equals(field, value)) return false; field = value; OnPropertyChanged(name); return true; }
     private void OnPropertyChanged([CallerMemberName] string? name = null) => PropertyChanged?.Invoke(this, new(name));
 }
