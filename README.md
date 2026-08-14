@@ -4,7 +4,7 @@
 
 ProcWitness is a cross-platform process monitor for Windows, Linux, and macOS that records behavior locally and builds AI-ready forensic evidence. It listens for a selected period, performs expensive correlation on-device, removes low-value noise, stores the evidence on disk, and creates a ready-to-paste prompt for Codex or another AI. The AI interprets a prepared evidence package—it is not asked to collect or invent telemetry.
 
-![ProcWitness neon desktop interface](docs/screenshots/procwitness-main.jpg)
+![ProcWitness 0.9.0 neon desktop interface](docs/screenshots/procwitness-main-v090.jpg)
 
 ## Install in one command
 
