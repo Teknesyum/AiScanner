@@ -40,6 +40,13 @@
           </Grid>
         </Grid>
       </TabItem>
+      <TabItem Header="Baseline">
+        <Grid RowDefinitions="Auto,Auto,*" Margin="0,12,0,0">
+          <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8"><ComboBox ItemsSource="{Binding BaselineFiles}" SelectedItem="{Binding SelectedBaseline}" PlaceholderText="Baseline seçin"/><Button Grid.Column="1" Content="Baseline kaydet" Click="SaveBaseline_Click"/><Button Grid.Column="2" Content="Karşılaştır" Click="CompareBaseline_Click"/></Grid>
+          <TextBlock Grid.Row="1" Margin="0,12" Foreground="#91A0BA" Text="{Binding BaselineStatus}"/>
+          <ListBox Grid.Row="2" ItemsSource="{Binding BaselineDifferences}" FontSize="11"><ListBox.ItemTemplate><DataTemplate><Border BorderBrush="#18202C" BorderThickness="0,0,0,1" Padding="10,6"><Grid ColumnDefinitions="120,180,*,220"><TextBlock Text="{Binding Category}" Foreground="{Binding HighlightColor}"/><TextBlock Grid.Column="1" Text="{Binding Name}" FontWeight="Bold" TextTrimming="CharacterEllipsis"/><TextBlock Grid.Column="2" Text="{Binding Path}" TextTrimming="CharacterEllipsis"/><TextBlock Grid.Column="3" Text="{Binding CurrentSha256}" TextTrimming="CharacterEllipsis"/></Grid></Border></DataTemplate></ListBox.ItemTemplate></ListBox>
+        </Grid>
+      </TabItem>
       <TabItem Header="Nasıl Kullanılır?">
         <ScrollViewer><Viewbox Stretch="Uniform" StretchDirection="UpOnly" HorizontalAlignment="Center" MaxWidth="1250"><StackPanel Width="1000" Margin="24">
           <TextBlock HorizontalAlignment="Center" FontSize="30" FontWeight="Bold" Foreground="#39FF14" Text="5 ADIMDA PROCWITNESS"/>

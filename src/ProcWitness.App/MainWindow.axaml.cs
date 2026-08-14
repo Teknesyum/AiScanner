@@ -23,6 +23,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     private readonly NetworkTelemetryCollector _network = new();
     private readonly TcpConnectionInspector _connections = new();
     private readonly PersistenceInspector _persistenceInspector = new();
+    private readonly BaselineManager _baselineManager;
     private readonly List<UsageSample> _history = [];
     private readonly DispatcherTimer _timer = new() { Interval = TimeSpan.FromSeconds(4) };
     private bool _scanning;
@@ -54,9 +55,21 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     private PersistenceEntry? _selectedPersistence;
     private string _persistenceStatus = "Kalıcılık envanteri henüz taranmadı.";
     private HashSet<string> _persistentPaths = new(OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal);
+    private IReadOnlyList<ProcessObservation> _latestProcesses = [];
+    private PersistenceInventory? _persistenceInventory;
+    private BaselineComparison? _baselineComparison;
+    private string? _selectedBaseline;
+    private string _baselineStatus = "Baseline seçilmedi; karşılaştırma yapılmadı.";
+    private HashSet<string> _newBaselinePaths = new(OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal);
+    private HashSet<string> _changedBaselinePaths = new(OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal);
+    private HashSet<string> _newPersistencePaths = new(OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal);
 
     public ObservableCollection<ProcessAssessment> Assessments { get; } = [];
     public ObservableCollection<PersistenceEntry> PersistenceEntries { get; } = [];
+    public ObservableCollection<string> BaselineFiles { get; } = [];
+    public ObservableCollection<BaselineDifferenceItem> BaselineDifferences { get; } = [];
+    public string? SelectedBaseline { get => _selectedBaseline; set => Set(ref _selectedBaseline, value); }
+    public string BaselineStatus { get => _baselineStatus; private set => Set(ref _baselineStatus, value); }
     public PersistenceEntry? SelectedPersistence { get => _selectedPersistence; set => Set(ref _selectedPersistence, value); }
     public string PersistenceStatus { get => _persistenceStatus; private set => Set(ref _persistenceStatus, value); }
     public string Status { get => _status; private set => Set(ref _status, value); }
@@ -87,7 +100,8 @@ public partial class MainWindow : Window, INotifyPropertyChanged
 
     public MainWindow()
     {
-        InitializeComponent(); DataContext = this;
+        _baselineManager = new(_store.DataDirectory);
+        InitializeComponent(); DataContext = this; RefreshBaselineFiles();
         _network.Start(); _timer.Tick += async (_, _) => await ScanAsync();
         Opened += async (_, _) => { await ScanAsync(); await RefreshPersistenceAsync(); await ScanAsync(); _timer.Start(); };
         Closed += (_, _) => { _timer.Stop(); _captureCancellation?.Cancel(); _network.Dispose(); };
@@ -181,6 +195,27 @@ public partial class MainWindow : Window, INotifyPropertyChanged
 
     private void OpenDataFolder_Click(object? sender, RoutedEventArgs e) { Directory.CreateDirectory(_store.DataDirectory); OpenPath(_store.DataDirectory, false); }
     private async void RefreshPersistence_Click(object? sender, RoutedEventArgs e) => await RefreshPersistenceAsync();
+    private async void SaveBaseline_Click(object? sender, RoutedEventArgs e)
+    {
+        if (_latestProcesses.Count == 0) { BaselineStatus = "Baseline için önce tarama yapın."; return; }
+        var listening = _connections.GetListeningEndpoints();
+        var path = await _baselineManager.SaveAsync(_latestProcesses, _persistenceInventory, listening.Endpoints, listening.Available);
+        RefreshBaselineFiles(); SelectedBaseline = path; BaselineStatus = $"Baseline kaydedildi: {Path.GetFileName(path)}";
+    }
+    private async void CompareBaseline_Click(object? sender, RoutedEventArgs e)
+    {
+        if (string.IsNullOrWhiteSpace(SelectedBaseline) || !File.Exists(SelectedBaseline)) { BaselineStatus = "Karşılaştırmak için bir baseline seçin."; return; }
+        _baselineComparison = await _baselineManager.CompareAsync(SelectedBaseline, _latestProcesses, _persistenceInventory);
+        _store.SetBaselineComparison(_baselineComparison);
+        BaselineDifferences.Clear();
+        foreach (var item in _baselineComparison.Added.Concat(_baselineComparison.Removed).Concat(_baselineComparison.Changed).Concat(_baselineComparison.NewPersistence)) BaselineDifferences.Add(item);
+        var comparer = OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal;
+        _newBaselinePaths = _baselineComparison.Added.Select(x => x.Path).Where(x => x is not null).Cast<string>().ToHashSet(comparer);
+        _changedBaselinePaths = _baselineComparison.Changed.Select(x => x.Path).Where(x => x is not null).Cast<string>().ToHashSet(comparer);
+        _newPersistencePaths = _baselineComparison.NewPersistence.Select(x => x.Path).Where(x => x is not null).Cast<string>().ToHashSet(comparer);
+        BaselineStatus = $"Karşılaştırıldı • eklenen {_baselineComparison.Added.Count} • kaybolan {_baselineComparison.Removed.Count} • değişen {_baselineComparison.Changed.Count} • yeni kalıcılık {_baselineComparison.NewPersistence.Count}";
+        await ScanAsync();
+    }
     private void OpenPersistenceLocation_Click(object? sender, RoutedEventArgs e)
     {
         var path = SelectedPersistence?.ResolvedPath;
@@ -311,10 +346,11 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         {
             var endpoints = _connections.GetRemoteEndpoints();
             var processes = (await _scanner.ScanAsync()).Select(p => { var net = _network.GetUsage(p.ProcessId); var remote = endpoints.TryGetValue(p.ProcessId, out var ep) ? ep : []; return p with { SentBytes = net.SentBytes, ReceivedBytes = net.ReceivedBytes, ActiveConnections = remote.Count, RemoteEndpoints = remote }; }).ToArray();
+            _latestProcesses = processes;
             if (persist || _captureStart is not null) await _store.AppendAsync(processes, _network.IsAvailable, _network.Status);
             var taskmgr = processes.FirstOrDefault(x => x.Name.Equals("Taskmgr", StringComparison.OrdinalIgnoreCase)); if (taskmgr?.StartedAt is { } start) _taskManagerStart = start;
             _history.AddRange(processes.Select(x => new UsageSample(x.ProcessId, x.Name, x.CpuPercent, x.ObservedAt))); _history.RemoveAll(x => x.Timestamp < DateTimeOffset.UtcNow.AddMinutes(-2));
-            var selectedPid = SelectedAssessment?.Process.ProcessId; var context = new RiskContext(_taskManagerStart, _persistentPaths); var results = processes.Select(x => _riskEngine.Assess(x, _history, context)).OrderByDescending(x => x.Score).ThenBy(x => x.Process.Name).ToArray();
+            var selectedPid = SelectedAssessment?.Process.ProcessId; var context = new RiskContext(_taskManagerStart, _persistentPaths, _newBaselinePaths, _changedBaselinePaths, _newPersistencePaths); var results = processes.Select(x => _riskEngine.Assess(x, _history, context)).OrderByDescending(x => x.Score).ThenBy(x => x.Process.Name).ToArray();
             Assessments.Clear(); foreach (var item in results) Assessments.Add(item); SelectedAssessment = Assessments.FirstOrDefault(x => x.Process.ProcessId == selectedPid);
             Status = $"{L("İzleniyor", "Monitoring")} • {PlatformName()} • {_network.Status}"; OnPropertyChanged(nameof(SummaryText));
         }
@@ -328,6 +364,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         try
         {
             var inventory = await _persistenceInspector.ScanAsync(Assessments.Select(x => x.Process).ToArray());
+            _persistenceInventory = inventory;
             _store.SetPersistenceInventory(inventory);
             PersistenceEntries.Clear();
             foreach (var entry in inventory.Entries.OrderBy(x => x.Source).ThenBy(x => x.Name)) PersistenceEntries.Add(entry);
@@ -339,6 +376,14 @@ public partial class MainWindow : Window, INotifyPropertyChanged
                 : $"{PersistenceEntries.Count} kalıcılık kaydı • kullanılamayan: {string.Join(", ", unavailable)}";
         }
         catch (Exception ex) { PersistenceStatus = $"Kalıcılık taraması tamamlanamadı: {ex.Message}"; }
+    }
+
+    private void RefreshBaselineFiles()
+    {
+        var selected = SelectedBaseline;
+        BaselineFiles.Clear();
+        foreach (var path in _baselineManager.List()) BaselineFiles.Add(path);
+        SelectedBaseline = selected is not null && BaselineFiles.Contains(selected) ? selected : BaselineFiles.FirstOrDefault();
     }
 
     private static string PlatformName() => OperatingSystem.IsWindows() ? "Windows" : OperatingSystem.IsLinux() ? "Linux" : OperatingSystem.IsMacOS() ? "macOS" : "Bilinmeyen OS";

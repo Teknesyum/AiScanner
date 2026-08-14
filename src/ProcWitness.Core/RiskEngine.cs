@@ -40,6 +40,12 @@ public sealed class RiskEngine : IRiskEngine
         if (persistent) Add(findings, "persistent", "Çalışan dosya bir otomatik başlatma kaydıyla eşleşti.");
         if (persistent && process.SignatureStatus == SignatureStatus.Invalid && process.ActiveConnections > 0)
             Add(findings, "persistent-unsigned-network", "İmzasız kalıcı süreç etkin dış bağlantı kurdu.");
+        if (process.ExecutablePath is { } path && context.NewSinceBaseline?.Contains(path) == true)
+            Add(findings, "new-since-baseline", "Bu çalıştırılabilir dosya seçili baseline kaydında yoktu.");
+        if (process.ExecutablePath is { } changedPath && context.ChangedSinceBaseline?.Contains(changedPath) == true)
+            Add(findings, "binary-changed-since-baseline", "Aynı yoldaki dosyanın SHA-256 değeri baseline sonrasında değişti.");
+        if (process.ExecutablePath is { } persistencePath && context.NewPersistenceSinceBaseline?.Contains(persistencePath) == true)
+            Add(findings, "new-persistence-since-baseline", "Bu dosyaya ait kalıcılık kaydı baseline sonrasında eklendi.");
         var (score, level) = Score(findings);
         return new(process, score, level, findings) { SuppressedFindings = suppressed };
     }
@@ -81,6 +87,9 @@ public sealed class RiskEngine : IRiskEngine
             Add(findings, "persistent", "Çalışan dosya bir otomatik başlatma kaydıyla eşleşti.");
         if (summary.Persistent && summary.SignatureStatus == SignatureStatus.Invalid && summary.MaxConnections > 0)
             Add(findings, "persistent-unsigned-network", "İmzasız kalıcı süreç etkin dış bağlantı kurdu.");
+        if (summary.NewSinceBaseline) Add(findings, "new-since-baseline", "Bu çalıştırılabilir dosya seçili baseline kaydında yoktu.");
+        if (summary.BinaryChangedSinceBaseline) Add(findings, "binary-changed-since-baseline", "Aynı yoldaki dosyanın SHA-256 değeri baseline sonrasında değişti.");
+        if (summary.NewPersistenceSinceBaseline) Add(findings, "new-persistence-since-baseline", "Bu dosyaya ait kalıcılık kaydı baseline sonrasında eklendi.");
         var meaningful = summary.MaxCpu >= RuleSet.MeaningfulThresholds.PeakCpu ||
                          summary.CpuRange >= RuleSet.MeaningfulThresholds.CpuRange ||
                          summary.SentBytesInWindow >= RuleSet.MeaningfulThresholds.SentBytes ||

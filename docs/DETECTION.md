@@ -22,6 +22,9 @@ Signature status is reported as `Valid`, `ValidButExpired`, `Invalid`, or `Unava
 | `suspicious-launch-chain` | 20 | A script-capable child is launched by an office/browser/archive process, or its command line contains encoded, download, execution, or hidden-window patterns. | Administrative scripts, software deployment, developer automation. |
 | `persistent` | 15 | A running executable path or SHA-256 matches a read-only persistence inventory entry. | Expected services, startup applications, scheduled maintenance. |
 | `persistent-unsigned-network` | 30 | A persistent process has invalid signature status and an active remote connection. | Unsigned internal agents and self-hosted management tools. |
+| `new-since-baseline` | 10 | An executable path is present now but absent from the selected baseline. | Newly installed or first-launched software. |
+| `binary-changed-since-baseline` | 25 | The same executable path has a different SHA-256 than the selected baseline. | Legitimate updates, patched binaries, replacement or tampering. |
+| `new-persistence-since-baseline` | 25 | A persistence identity is absent from the selected baseline. | New startup applications, services, scheduled jobs, or system updates. |
 
 Windowed captures also summarize sustained CPU, CPU range, sent and received deltas, recent binaries, hidden load, and PID reuse. These correlations reduce noise but must still be checked against executable path, SHA-256, publisher, role, and the complete timeline.
 

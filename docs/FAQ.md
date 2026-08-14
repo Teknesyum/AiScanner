@@ -31,3 +31,7 @@ Verify the full path, publisher, SHA-256, start time, network role, and time-ser
 ## Does the persistence scan change startup settings?
 
 No. Registry keys, startup folders, scheduled tasks, services, systemd units, cron entries, shell profiles, launchd items, and login items are inventoried read-only. Sources that cannot be accessed are marked unavailable; ProcWitness does not disable or delete them.
+
+## What does baseline comparison mean?
+
+A baseline records stable executable identity, signature, available listening-port evidence, and persistence state. A later comparison separates added, removed, and same-path/hash-changed items. If no baseline is selected, ProcWitness reports that comparison was not performed; it never presents missing comparison data as zero changes.

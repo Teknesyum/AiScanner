@@ -95,6 +95,7 @@ public sealed class AiAnalysisPromptBuilder
             3. snapshots bölümüne yalnızca yerel bulguyu doğrulamak, zaman çizgisini anlatmak veya çelişki çözmek gerektiğinde bak.
             4. suppressedFindings içindeki sinyaller doğrulanmış güvenilir yayıncı nedeniyle puandan çıkarılmıştır; bunları şeffaflık kaydı olarak kullan ve diğer davranış bulgularını bağımsız değerlendir.
             5. persistence bölümünde otomatik başlatma kayıtlarını, çalışan süreç eşleşmelerini, imza/hash ve kaynak erişilebilirliğini incele. available=false olan kaynakları boş veya temiz kabul etme.
+            6. baselineComparison null ise karşılaştırma yapılmadığını açıkça yaz; bunu "değişiklik yok" diye yorumlama. Doluysa eklenen, kaybolan, hash'i değişen ve yeni kalıcılık kayıtlarını önceliklendir.
 
             Ayrıntılı Türkçe rapor üret:
             - Yönetici özeti ve genel risk seviyesi

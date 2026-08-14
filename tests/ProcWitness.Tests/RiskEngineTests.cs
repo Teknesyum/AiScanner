@@ -124,12 +124,15 @@ public sealed class RiskEngineTests
         "suspicious-launch-chain" => CleanWindow() with { SuspiciousLaunchChain = true },
         "persistent" => CleanWindow() with { Persistent = true },
         "persistent-unsigned-network" => CleanWindow() with { Persistent = true, SignatureStatus = SignatureStatus.Invalid, MaxConnections = 1 },
+        "new-since-baseline" => CleanWindow() with { NewSinceBaseline = true },
+        "binary-changed-since-baseline" => CleanWindow() with { BinaryChangedSinceBaseline = true },
+        "new-persistence-since-baseline" => CleanWindow() with { NewPersistenceSinceBaseline = true },
         _ => throw new ArgumentOutOfRangeException(nameof(code), code, null)
     };
 
     internal static ProcessWindowSummary CleanWindow() => new(
         "worker|safe|ABC", "worker", @"C:\Program Files\Safe\safe.exe", "ABC", 3,
-        2, 2, 0, 1, SignatureStatus.Valid, true, false, ["Safe Publisher"], [], [], true, true, false, false,
+        2, 2, 0, 1, SignatureStatus.Valid, true, false, ["Safe Publisher"], [], [], true, true, false, false, false, false, false,
         0, 0, 0, [], false, 1, DateTimeOffset.UtcNow.AddMinutes(-1), DateTimeOffset.UtcNow,
         [new(DateTimeOffset.UtcNow, 2, 1, 0, 0, 0)]);
 }

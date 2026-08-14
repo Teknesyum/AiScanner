@@ -139,6 +139,7 @@ Do not delete a file solely because it appears near the top. Verify its path and
 - abnormal upload/download behavior when the platform exposes per-process byte telemetry
 - read-only persistence inventory across startup entries, scheduled tasks, services, systemd, cron, launchd, and login items
 - running processes linked to persistence entries by executable path or SHA-256
+- saved baselines and explicit added, removed, hash-changed, and new-persistence differences
 
 Pressing **Scan now** creates an instant evidence set and enables the prompt button. Pressing **1, 5, 10, 20, or custom minutes** starts a new capture at that exact moment. ProcWitness samples throughout the full interval, shows the countdown in the scan control, writes JSONL locally, creates a correlated JSON bundle, and only then enables the AI prompt.
 

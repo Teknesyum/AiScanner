@@ -20,11 +20,13 @@ public sealed class TelemetryStore
     private readonly string _collectorInstanceId = Guid.NewGuid().ToString("N");
     private readonly IRiskEngine _riskEngine;
     private PersistenceInventory? _persistenceInventory;
+    private BaselineComparison? _baselineComparison;
 
     public string DataDirectory { get; }
     public string TelemetryPath => Path.Combine(DataDirectory, "telemetry.jsonl");
 
     public void SetPersistenceInventory(PersistenceInventory inventory) => _persistenceInventory = inventory;
+    public void SetBaselineComparison(BaselineComparison? comparison) => _baselineComparison = comparison;
 
     public TelemetryStore(IRiskEngine? riskEngine = null)
     {
@@ -160,6 +162,9 @@ public sealed class TelemetryStore
                 _persistenceInventory?.Entries.Any(x =>
                     x.ResolvedPath is not null && first.ExecutablePath is not null && string.Equals(x.ResolvedPath, first.ExecutablePath, OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal) ||
                     x.Sha256 is not null && first.Sha256 is not null && string.Equals(x.Sha256, first.Sha256, StringComparison.OrdinalIgnoreCase)) == true,
+                MatchesBaseline(first.ExecutablePath, _baselineComparison?.Added),
+                MatchesBaseline(first.ExecutablePath, _baselineComparison?.Changed),
+                MatchesBaseline(first.ExecutablePath, _baselineComparison?.NewPersistence),
                 sentDelta, receivedDelta, group.Max(x => x.ActiveConnections),
                 group.SelectMany(x => x.RemoteEndpoints).Distinct().Take(RuleSet.MeaningfulThresholds.MaxRemoteEndpoints).ToArray(),
                 recentFile, pidCount, group.Min(x => x.ObservedAt), group.Max(x => x.ObservedAt), milestones);
@@ -173,6 +178,7 @@ public sealed class TelemetryStore
             x.Summary.WindowVisibilityAvailable, x.Summary.Publishers,
             x.Summary.ParentNames, x.Summary.CommandLines, x.Summary.CommandLineAvailable,
             x.Summary.ProcessTreeAvailable, x.Summary.SuspiciousLaunchChain, x.Summary.Persistent,
+            x.Summary.NewSinceBaseline, x.Summary.BinaryChangedSinceBaseline, x.Summary.NewPersistenceSinceBaseline,
             x.Summary.SentBytesInWindow, x.Summary.ReceivedBytesInWindow, x.Summary.MaxConnections,
             x.Summary.RemoteEndpoints, x.Summary.RecentFile, x.Summary.PidCount, x.Summary.FirstSeenUtc,
             x.Summary.LastSeenUtc, x.Summary.Milestones,
@@ -202,13 +208,14 @@ public sealed class TelemetryStore
             guide = new
             {
                 purpose = "Windows süreç davranışının zaman serisi analizi",
-                readingOrder = new[] { "meta", "processSummaries", "persistence", "processTree", "snapshots" },
+                readingOrder = new[] { "meta", "baselineComparison", "processSummaries", "persistence", "processTree", "snapshots" },
                 sections = new
                 {
                     meta = "İstenen zaman aralığı, örnek ve gözlem sayıları.",
                     processSummaries = "Dosya kimliğine göre gruplanmış hızlı indeks. Önce buradan yüksek CPU, imza durumu ve sıra dışı yolları seç.",
                     processTree = "Aday süreçlerin tekrarsız ebeveyn zinciri ve maskelenmiş komut satırları.",
                     persistence = "Salt okunur otomatik başlatma envanteri; unavailable kaynaklar taranamadı demektir, boş oldukları anlamına gelmez.",
+                    baselineComparison = "null ise karşılaştırma yapılmadı; boş listeler yalnızca bir baseline seçilip karşılaştırıldığında değişiklik yok demektir.",
                     snapshots = "Kronolojik ham gözlemler. Ani yük düşüşü, süreç kaybolması/geri gelmesi ve Taskmgr davranışı için bunu kullan."
                 },
                 fieldHints = new
@@ -246,6 +253,7 @@ public sealed class TelemetryStore
                 networkTelemetryStatuses = snapshots.Select(x => x.NetworkTelemetryStatus).Where(x => x is not null).Distinct().ToArray(),
                 filtering = "Sabit düşük CPU'lu, ağsız ve ek risk sinyali olmayan süreçler AI bağlamını korumak için çıkarıldı."
             },
+            baselineComparison = _baselineComparison,
             processSummaries = summaries,
             persistence = _persistenceInventory,
             processTree = processTreeNodes.Values.OrderBy(x => x.ProcessId).ToArray(),
@@ -320,4 +328,7 @@ public sealed class TelemetryStore
         if (values.Contains(SignatureStatus.Invalid)) return SignatureStatus.Invalid;
         return SignatureStatus.Unavailable;
     }
+
+    private static bool MatchesBaseline(string? path, IReadOnlyList<BaselineDifferenceItem>? items) =>
+        path is not null && items?.Any(x => x.Path is not null && string.Equals(path, x.Path, OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal)) == true;
 }

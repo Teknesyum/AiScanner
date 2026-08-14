@@ -83,7 +83,52 @@ public sealed record ProcessAssessment(
 }
 
 public sealed record UsageSample(int ProcessId, string Name, double CpuPercent, DateTimeOffset Timestamp);
-public readonly record struct RiskContext(DateTimeOffset? LastTaskManagerStart, IReadOnlySet<string> PersistentPaths);
+public readonly record struct RiskContext(
+    DateTimeOffset? LastTaskManagerStart,
+    IReadOnlySet<string> PersistentPaths,
+    IReadOnlySet<string>? NewSinceBaseline = null,
+    IReadOnlySet<string>? ChangedSinceBaseline = null,
+    IReadOnlySet<string>? NewPersistenceSinceBaseline = null);
+
+public sealed record BaselineProcess(
+    string Identity,
+    string Name,
+    string? Path,
+    string? Sha256,
+    SignatureStatus SignatureStatus,
+    DateTimeOffset FirstSeenUtc,
+    IReadOnlyList<string> ListeningPorts,
+    bool ListeningPortsAvailable);
+
+public sealed record BaselineSnapshot(
+    string Schema,
+    DateTimeOffset CreatedAtUtc,
+    IReadOnlyList<BaselineProcess> Processes,
+    PersistenceInventory? Persistence);
+
+public sealed record BaselineDifferenceItem(
+    string Category,
+    string Identity,
+    string Name,
+    string? Path,
+    string? PreviousSha256,
+    string? CurrentSha256)
+{
+    public string HighlightColor => Category switch
+    {
+        "added" or "new-persistence" => "#7CFF68",
+        "changed" => "#FFCA55",
+        _ => "#91A0BA"
+    };
+}
+
+public sealed record BaselineComparison(
+    string BaselinePath,
+    DateTimeOffset ComparedAtUtc,
+    IReadOnlyList<BaselineDifferenceItem> Added,
+    IReadOnlyList<BaselineDifferenceItem> Removed,
+    IReadOnlyList<BaselineDifferenceItem> Changed,
+    IReadOnlyList<BaselineDifferenceItem> NewPersistence);
 
 public sealed record ProcessMilestone(
     DateTimeOffset AtUtc,
@@ -122,6 +167,9 @@ public sealed record ProcessWindowSummary(
     bool ProcessTreeAvailable,
     bool SuspiciousLaunchChain,
     bool Persistent,
+    bool NewSinceBaseline,
+    bool BinaryChangedSinceBaseline,
+    bool NewPersistenceSinceBaseline,
     long SentBytesInWindow,
     long ReceivedBytesInWindow,
     int MaxConnections,
@@ -164,6 +212,9 @@ public static class RuleSet
         ,new("suspicious-launch-chain", "Şüpheli başlatma zinciri", 20)
         ,new("persistent", "Kalıcılık kaydıyla eşleşen süreç", 15)
         ,new("persistent-unsigned-network", "İmzasız kalıcı süreç ağ kullanıyor", 30)
+        ,new("new-since-baseline", "Baseline sonrasında eklendi", 10)
+        ,new("binary-changed-since-baseline", "İkili baseline sonrasında değişti", 25)
+        ,new("new-persistence-since-baseline", "Yeni kalıcılık kaydı", 25)
     }.ToDictionary(x => x.Code, StringComparer.Ordinal);
 
     public static class MeaningfulThresholds

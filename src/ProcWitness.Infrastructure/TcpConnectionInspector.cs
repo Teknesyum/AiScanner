@@ -4,8 +4,18 @@ using System.Runtime.InteropServices;
 
 namespace ProcWitness.Infrastructure;
 
+public sealed record ListeningPortSnapshot(IReadOnlyDictionary<int, IReadOnlyList<string>> Endpoints, bool Available);
+
 public sealed class TcpConnectionInspector
 {
+    public ListeningPortSnapshot GetListeningEndpoints()
+    {
+        if (OperatingSystem.IsWindows()) return new(GetWindowsListeningEndpoints(), true);
+        if (OperatingSystem.IsLinux()) return new(GetLinuxListeningEndpoints(), File.Exists("/proc/net/tcp"));
+        if (OperatingSystem.IsMacOS()) return new(GetMacListeningEndpoints(), File.Exists("/usr/sbin/lsof"));
+        return new(Empty(), false);
+    }
+
     public IReadOnlyDictionary<int, IReadOnlyList<string>> GetRemoteEndpoints()
     {
         if (OperatingSystem.IsWindows()) return GetWindowsEndpoints();
@@ -42,6 +52,27 @@ public sealed class TcpConnectionInspector
                 if (string.IsNullOrWhiteSpace(endpoint)) continue;
                 if (!result.TryGetValue(pid, out var set)) result[pid] = set = [];
                 set.Add(endpoint);
+            }
+            return Freeze(result);
+        }
+        catch { return Empty(); }
+    }
+
+    private static IReadOnlyDictionary<int, IReadOnlyList<string>> GetMacListeningEndpoints()
+    {
+        try
+        {
+            using var process = Process.Start(new ProcessStartInfo("/usr/sbin/lsof", "-nP -iTCP -sTCP:LISTEN") { UseShellExecute = false, RedirectStandardOutput = true, CreateNoWindow = true });
+            if (process is null) return Empty();
+            var output = process.StandardOutput.ReadToEnd();
+            if (!process.WaitForExit(3000)) { process.Kill(true); return Empty(); }
+            var result = new Dictionary<int, HashSet<string>>();
+            foreach (var line in output.Split('\n').Skip(1))
+            {
+                var parts = line.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                if (parts.Length < 9 || !int.TryParse(parts[1], out var pid)) continue;
+                if (!result.TryGetValue(pid, out var set)) result[pid] = set = [];
+                set.Add(parts[^2].Contains(':') ? parts[^2] : parts[^1]);
             }
             return Freeze(result);
         }
@@ -86,6 +117,49 @@ public sealed class TcpConnectionInspector
         catch { return Empty(); }
     }
 
+    private static IReadOnlyDictionary<int, IReadOnlyList<string>> GetLinuxListeningEndpoints()
+    {
+        try
+        {
+            var inodeEndpoints = new Dictionary<string, string>();
+            foreach (var file in new[] { "/proc/net/tcp", "/proc/net/tcp6" })
+            {
+                if (!File.Exists(file)) continue;
+                foreach (var line in File.ReadLines(file).Skip(1))
+                {
+                    var parts = line.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                    if (parts.Length < 10 || parts[3] != "0A") continue;
+                    inodeEndpoints[parts[9]] = DecodeProcEndpoint(parts[1]);
+                }
+            }
+            return MapLinuxSockets(inodeEndpoints);
+        }
+        catch { return Empty(); }
+    }
+
+    private static IReadOnlyDictionary<int, IReadOnlyList<string>> MapLinuxSockets(IReadOnlyDictionary<string, string> inodeEndpoints)
+    {
+        var result = new Dictionary<int, HashSet<string>>();
+        foreach (var procDir in Directory.EnumerateDirectories("/proc").Where(x => int.TryParse(Path.GetFileName(x), out _)))
+        {
+            if (!int.TryParse(Path.GetFileName(procDir), out var pid)) continue;
+            try
+            {
+                foreach (var fd in Directory.EnumerateFiles(Path.Combine(procDir, "fd")))
+                {
+                    var target = new FileInfo(fd).LinkTarget;
+                    if (target is null || !target.StartsWith("socket:[", StringComparison.Ordinal)) continue;
+                    var inode = target[8..^1];
+                    if (!inodeEndpoints.TryGetValue(inode, out var endpoint)) continue;
+                    if (!result.TryGetValue(pid, out var set)) result[pid] = set = [];
+                    set.Add(endpoint);
+                }
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
+        }
+        return Freeze(result);
+    }
+
     private static string DecodeProcEndpoint(string value)
     {
         var pair = value.Split(':');
@@ -120,6 +194,28 @@ public sealed class TcpConnectionInspector
                 if (row.State != 5 || row.RemoteAddress == 0) continue;
                 if (!result.TryGetValue((int)row.ProcessId, out var set)) result[(int)row.ProcessId] = set = [];
                 var bytes = BitConverter.GetBytes(row.RemotePort); set.Add($"{new IPAddress(row.RemoteAddress)}:{(bytes[0] << 8) + bytes[1]}");
+            }
+            return Freeze(result);
+        }
+        finally { Marshal.FreeHGlobal(buffer); }
+    }
+
+    private static IReadOnlyDictionary<int, IReadOnlyList<string>> GetWindowsListeningEndpoints()
+    {
+        var size = 0;
+        _ = GetExtendedTcpTable(IntPtr.Zero, ref size, true, 2, 5, 0);
+        var buffer = Marshal.AllocHGlobal(size);
+        try
+        {
+            if (GetExtendedTcpTable(buffer, ref size, true, 2, 5, 0) != 0) return Empty();
+            var result = new Dictionary<int, HashSet<string>>();
+            var count = Marshal.ReadInt32(buffer); var rowSize = Marshal.SizeOf<MibTcpRowOwnerPid>();
+            for (var index = 0; index < count; index++)
+            {
+                var row = Marshal.PtrToStructure<MibTcpRowOwnerPid>(buffer + sizeof(int) + index * rowSize);
+                if (row.State != 2) continue;
+                if (!result.TryGetValue((int)row.ProcessId, out var set)) result[(int)row.ProcessId] = set = [];
+                var bytes = BitConverter.GetBytes(row.LocalPort); set.Add($"{new IPAddress(row.LocalAddress)}:{(bytes[0] << 8) + bytes[1]}");
             }
             return Freeze(result);
         }
