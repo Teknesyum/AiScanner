@@ -79,6 +79,54 @@ public sealed class RiskEngineTests
         Assert.Contains("5000 süreç gözlemi", prompt);
     }
 
+    public static TheoryData<string> RuleCodes => new(RuleSet.Rules.Keys.ToArray());
+
+    [Theory]
+    [MemberData(nameof(RuleCodes))]
+    public void EveryRule_HasTriggeringAndNonTriggeringCase(string code)
+    {
+        if (code == "taskmgr-evasion")
+        {
+            var started = DateTimeOffset.UtcNow;
+            var process = Observation(@"C:\Tools\worker.exe", 2, true) with { ObservedAt = started.AddSeconds(4) };
+            UsageSample[] triggering =
+            [
+                new(42, "worker", 80, started.AddSeconds(-8)),
+                new(42, "worker", 75, started.AddSeconds(-3)),
+                new(42, "worker", 3, started.AddSeconds(3))
+            ];
+            Assert.Contains(_engine.Assess(process, triggering, started).Findings, x => x.Code == code);
+            Assert.DoesNotContain(_engine.Assess(process, [], null).Findings, x => x.Code == code);
+            return;
+        }
+
+        Assert.Contains(_engine.AssessWindow(TriggerWindow(code)).Findings, x => x.Code == code);
+        Assert.DoesNotContain(_engine.AssessWindow(CleanWindow()).Findings, x => x.Code == code);
+    }
+
     private static ProcessObservation Observation(string path, double cpu, bool signed, bool visible = true) =>
         new(42, "worker", path, DateTimeOffset.UtcNow.AddMinutes(-1), cpu, 1024, visible, signed, signed ? "Safe Publisher" : null, "ABC", DateTimeOffset.UtcNow);
+
+    private static ProcessWindowSummary TriggerWindow(string code) => code switch
+    {
+        "unsigned" => CleanWindow() with { Signed = false },
+        "user-writable-path" => CleanWindow() with { Path = Path.Combine(Path.GetTempPath(), "worker.exe") },
+        "elevated-cpu" => CleanWindow() with { MaxCpu = 40, AvgCpu = 20, CpuRange = 10 },
+        "high-cpu" => CleanWindow() with { MaxCpu = 80, AvgCpu = 50, CpuRange = 35 },
+        "hidden-load" => CleanWindow() with { Hidden = true, MaxCpu = 40, AvgCpu = 20 },
+        "unsigned-network" => CleanWindow() with { Signed = false, MaxConnections = 1 },
+        "recent-network-binary" => CleanWindow() with { RecentFile = true, MaxConnections = 1 },
+        "background-upload" => CleanWindow() with { SentBytesInWindow = 11 * 1024 * 1024 },
+        "cpu-spike" => CleanWindow() with { MaxCpu = 50, AvgCpu = 10, CpuRange = 30 },
+        "meaningful-upload" => CleanWindow() with { SentBytesInWindow = 300 * 1024 },
+        "high-download" => CleanWindow() with { ReceivedBytesInWindow = 26 * 1024 * 1024 },
+        "pid-respawn" => CleanWindow() with { PidCount = 2 },
+        _ => throw new ArgumentOutOfRangeException(nameof(code), code, null)
+    };
+
+    internal static ProcessWindowSummary CleanWindow() => new(
+        "worker|safe|ABC", "worker", @"C:\Program Files\Safe\safe.exe", "ABC", 3,
+        2, 2, 0, 1, true, true, true, false, ["Safe Publisher"],
+        0, 0, 0, [], false, 1, DateTimeOffset.UtcNow.AddMinutes(-1), DateTimeOffset.UtcNow,
+        [new(DateTimeOffset.UtcNow, 2, 1, 0, 0, 0)]);
 }

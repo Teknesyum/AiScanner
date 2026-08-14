@@ -13,5 +13,9 @@ ProcWitness findings prioritize investigation; no individual finding proves mali
 | `recent-network-binary` | 15 | A binary created within seven days has an active connection. | Fresh installs and automatic updates. |
 | `background-upload` | 20 | A process without a visible window has sent at least 10 MB. | Backup, synchronization, telemetry, game launchers. |
 | `taskmgr-evasion` | 30 | Average CPU of at least 30% falls to 5% or one fifth after Task Manager starts. | Work completing naturally or software reacting benignly to system load. |
+| `cpu-spike` | 15 | A capture window reaches at least 40% CPU with a range of at least 25 points. | Short compilation, application startup, decompression. |
+| `meaningful-upload` | 8 | A capture window sends at least 256 KB but less than the high-upload threshold. | Sync metadata, update checks, normal API traffic. |
+| `high-download` | 8 | A capture window receives at least 25 MB. | Updates, streaming, downloads, game assets. |
+| `pid-respawn` | 10 | The same executable identity appears under more than one PID in a capture. | Updaters, worker pools, normal restarts. |
 
 Windowed captures also summarize sustained CPU, CPU range, sent and received deltas, recent binaries, hidden load, and PID reuse. These correlations reduce noise but must still be checked against executable path, SHA-256, publisher, role, and the complete timeline.

@@ -18,12 +18,14 @@ public sealed class TelemetryStore
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
     private readonly SemaphoreSlim _gate = new(1, 1);
     private readonly string _collectorInstanceId = Guid.NewGuid().ToString("N");
+    private readonly IRiskEngine _riskEngine;
 
     public string DataDirectory { get; }
     public string TelemetryPath => Path.Combine(DataDirectory, "telemetry.jsonl");
 
-    public TelemetryStore()
+    public TelemetryStore(IRiskEngine? riskEngine = null)
     {
+        _riskEngine = riskEngine ?? new RiskEngine();
         var localData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
         DataDirectory = Path.Combine(localData, "ProcWitness", "data");
         MigrateLegacyData(Path.Combine(localData, "Ai" + "Scanner", "data"), DataDirectory);
@@ -120,7 +122,7 @@ public sealed class TelemetryStore
 
         static string Identity(ProcessObservation x) => $"{x.Name}|{x.ExecutablePath}|{x.Sha256}";
         var processGroups = snapshots.SelectMany(x => x.Processes).GroupBy(Identity);
-        var allSummaries = processGroups.Select(group =>
+        var allAssessments = processGroups.Select(group =>
         {
             var ordered = group.OrderBy(x => x.ObservedAt).ToArray();
             var first = ordered[0];
@@ -130,62 +132,43 @@ public sealed class TelemetryStore
             var cpuRange = peakCpu - group.Min(x => x.CpuPercent);
             var sentDelta = group.GroupBy(x => x.ProcessId).Sum(pid => Math.Max(0, pid.Max(x => x.SentBytes) - pid.Min(x => x.SentBytes)));
             var receivedDelta = group.GroupBy(x => x.ProcessId).Sum(pid => Math.Max(0, pid.Max(x => x.ReceivedBytes) - pid.Min(x => x.ReceivedBytes)));
-            var recentFile = group.Any(x => x.FileCreatedAt >= DateTimeOffset.UtcNow.AddDays(-7));
+            var recentFile = group.Any(x => x.FileCreatedAt >= DateTimeOffset.UtcNow.AddDays(-RuleSet.MeaningfulThresholds.RecentFileDays));
             var signatureAvailable = group.Any(x => x.SignatureVerificationAvailable);
             var visibilityAvailable = group.Any(x => x.WindowVisibilityAvailable);
-            var unsigned = signatureAvailable && !group.Any(x => x.IsSigned);
             var hidden = visibilityAvailable && group.Where(x => x.WindowVisibilityAvailable).All(x => !x.HasVisibleWindow);
             var pidCount = group.Select(x => x.ProcessId).Distinct().Count();
-            var localFindings = new List<string>();
-            var localScore = 0;
-            if (peakCpu >= 70 && averageCpu >= 35) { localScore += 25; localFindings.Add($"Sürekli yüksek CPU: ort. %{averageCpu:F1}, tepe %{peakCpu:F1}"); }
-            else if (peakCpu >= 40 && cpuRange >= 25) { localScore += 15; localFindings.Add($"Belirgin CPU sıçraması: {cpuRange:F1} puan"); }
-            if (sentDelta >= 10 * 1024 * 1024) { localScore += 20; localFindings.Add($"Yüksek upload: {sentDelta / 1048576d:F1} MB"); }
-            else if (sentDelta >= 256 * 1024) { localScore += 8; localFindings.Add($"Anlamlı upload: {sentDelta / 1048576d:F2} MB"); }
-            if (receivedDelta >= 25 * 1024 * 1024) { localScore += 8; localFindings.Add($"Yüksek download: {receivedDelta / 1048576d:F1} MB"); }
-            if (unsigned && group.Any(x => x.ActiveConnections > 0)) { localScore += 25; localFindings.Add("İmzasız dosya etkin dış bağlantı kurdu"); }
-            if (recentFile && group.Any(x => x.ActiveConnections > 0)) { localScore += 20; localFindings.Add("Son 7 günde oluşmuş dosya ağ kullandı"); }
-            if (hidden && (peakCpu >= 35 || sentDelta >= 1024 * 1024)) { localScore += 15; localFindings.Add("Görünür pencere olmadan yoğun kaynak/ağ kullanımı"); }
-            if (pidCount > 1) { localScore += 10; localFindings.Add($"Aynı dosya {pidCount} farklı PID ile gözlendi"); }
-            var meaningful = peakCpu >= 15 || cpuRange >= 12 || sentDelta >= 256 * 1024 || receivedDelta >= 1024 * 1024 ||
-                             group.Any(x => x.ActiveConnections > 0 && x.SignatureVerificationAvailable && !x.IsSigned) || recentFile || pidCount > 1;
             var milestones = ordered.Where((item, index) => index == 0 || index == ordered.Length - 1 ||
-                    Math.Abs(item.CpuPercent - ordered[index - 1].CpuPercent) >= 10 ||
+                    Math.Abs(item.CpuPercent - ordered[index - 1].CpuPercent) >= RuleSet.MeaningfulThresholds.MilestoneCpuChange ||
                     item.ActiveConnections != ordered[index - 1].ActiveConnections)
-                .Take(80)
-                .Select(x => new { atUtc = x.ObservedAt, cpu = Math.Round(x.CpuPercent, 1), ramMb = Math.Round(x.WorkingSetBytes / 1048576d, 1), x.SentBytes, x.ReceivedBytes, x.ActiveConnections })
+                .Take(RuleSet.MeaningfulThresholds.MaxMilestones)
+                .Select(x => new ProcessMilestone(x.ObservedAt, Math.Round(x.CpuPercent, 1), Math.Round(x.WorkingSetBytes / 1048576d, 1), x.SentBytes, x.ReceivedBytes, x.ActiveConnections))
                 .ToArray();
-            return new
-            {
-                identity = group.Key,
-                first.Name,
-                path = AnonymizePath(first.ExecutablePath),
-                first.Sha256,
-                samples = group.Count(),
-                maxCpu = Math.Round(peakCpu, 1),
-                avgCpu = Math.Round(averageCpu, 1),
-                cpuRange = Math.Round(cpuRange, 1),
-                maxRamMb = Math.Round(group.Max(x => x.WorkingSetBytes) / 1024d / 1024d, 1),
-                signed = group.Any(x => x.IsSigned),
-                signatureVerificationAvailable = signatureAvailable,
-                windowVisibilityAvailable = visibilityAvailable,
-                publishers = group.Select(x => x.Publisher).Where(x => x is not null).Distinct().ToArray(),
-                sentBytesInWindow = sentDelta,
-                receivedBytesInWindow = receivedDelta,
-                maxConnections = group.Max(x => x.ActiveConnections),
-                remoteEndpoints = group.SelectMany(x => x.RemoteEndpoints).Distinct().Take(50).ToArray(),
-                recentFile,
-                pidCount,
-                firstSeenUtc = group.Min(x => x.ObservedAt),
-                lastSeenUtc = group.Max(x => x.ObservedAt),
-                milestones,
-                meaningful,
-                localScore = Math.Min(100, localScore),
-                localFindings = localFindings.ToArray()
-            };
+            var summary = new ProcessWindowSummary(
+                group.Key, first.Name, AnonymizePath(first.ExecutablePath), first.Sha256, group.Count(),
+                Math.Round(peakCpu, 1), Math.Round(averageCpu, 1), Math.Round(cpuRange, 1),
+                Math.Round(group.Max(x => x.WorkingSetBytes) / 1048576d, 1), group.Any(x => x.IsSigned),
+                signatureAvailable, visibilityAvailable, hidden,
+                group.Select(x => x.Publisher).Where(x => x is not null).Cast<string>().Distinct().ToArray(),
+                sentDelta, receivedDelta, group.Max(x => x.ActiveConnections),
+                group.SelectMany(x => x.RemoteEndpoints).Distinct().Take(RuleSet.MeaningfulThresholds.MaxRemoteEndpoints).ToArray(),
+                recentFile, pidCount, group.Min(x => x.ObservedAt), group.Max(x => x.ObservedAt), milestones);
+            return _riskEngine.AssessWindow(summary);
         }).ToArray();
-        var summaries = allSummaries.Where(x => x.meaningful).OrderByDescending(x => x.localScore).ThenByDescending(x => x.sentBytesInWindow).ThenByDescending(x => x.maxCpu).ToArray();
-        var candidateKeys = summaries.Select(x => x.identity).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var assessments = allAssessments.Where(x => x.Meaningful).OrderByDescending(x => x.Score).ThenByDescending(x => x.Summary.SentBytesInWindow).ThenByDescending(x => x.Summary.MaxCpu).ToArray();
+        var summaries = assessments.Select(x => new
+        {
+            x.Summary.Identity, x.Summary.Name, x.Summary.Path, x.Summary.Sha256, x.Summary.Samples,
+            x.Summary.MaxCpu, x.Summary.AvgCpu, x.Summary.CpuRange, x.Summary.MaxRamMb, x.Summary.Signed,
+            x.Summary.SignatureVerificationAvailable, x.Summary.WindowVisibilityAvailable, x.Summary.Publishers,
+            x.Summary.SentBytesInWindow, x.Summary.ReceivedBytesInWindow, x.Summary.MaxConnections,
+            x.Summary.RemoteEndpoints, x.Summary.RecentFile, x.Summary.PidCount, x.Summary.FirstSeenUtc,
+            x.Summary.LastSeenUtc, x.Summary.Milestones,
+            localScore = x.Score,
+            localLevel = x.Level,
+            localFindings = x.Findings.Select(f => f.Explanation).ToArray(),
+            findings = x.Findings
+        }).ToArray();
+        var candidateKeys = assessments.Select(x => x.Summary.Identity).ToHashSet(StringComparer.OrdinalIgnoreCase);
 
         var bundle = new
         {
@@ -228,7 +211,7 @@ public sealed class TelemetryStore
                 snapshotCount = snapshots.Count,
                 observationCount = snapshots.Sum(x => x.Processes.Count),
                 includedCandidateCount = summaries.Length,
-                omittedStableProcessCount = allSummaries.Length - summaries.Length,
+                omittedStableProcessCount = allAssessments.Length - summaries.Length,
                 networkByteTelemetryAvailable = snapshots.Any(x => x.NetworkByteTelemetryAvailable),
                 networkTelemetryStatuses = snapshots.Select(x => x.NetworkTelemetryStatus).Where(x => x is not null).Distinct().ToArray(),
                 filtering = "Sabit düşük CPU'lu, ağsız ve ek risk sinyali olmayan süreçler AI bağlamını korumak için çıkarıldı."
@@ -266,7 +249,7 @@ public sealed class TelemetryStore
             $"YEREL ÖLÇÜM OTURUMU • {requestedDuration.TotalMinutes:0.##} dakika",
             $"Başlangıç: {captureStartedAt.LocalDateTime:G} • Bitiş: {captureEndedAt.LocalDateTime:G}",
             $"Kapsam: {snapshots.Count} örnek, {snapshots.Sum(x => x.Processes.Count)} gözlem, {summaries.Length} anlamlı aday",
-            $"Elendi: düşük ve sabit kullanım gösteren {allSummaries.Length - summaries.Length} süreç",
+            $"Elendi: düşük ve sabit kullanım gösteren {allAssessments.Length - summaries.Length} süreç",
             snapshots.Any(x => x.NetworkByteTelemetryAvailable)
                 ? "Ağ baytı telemetrisi: kullanılabilir"
                 : "Ağ baytı telemetrisi: kullanılamıyor; 0 B değerleri güven kanıtı değildir",
@@ -274,8 +257,8 @@ public sealed class TelemetryStore
         };
         foreach (var candidate in summaries.Take(20))
         {
-            reportLines.Add($"[{candidate.localScore}/100] {candidate.Name} • {candidate.path ?? "yol okunamadı"}");
-            reportLines.Add($"CPU ort/tepe: %{candidate.avgCpu:F1}/%{candidate.maxCpu:F1} • RAM tepe: {candidate.maxRamMb:F1} MB • ↑ {candidate.sentBytesInWindow / 1048576d:F2} MB • ↓ {candidate.receivedBytesInWindow / 1048576d:F2} MB");
+            reportLines.Add($"[{candidate.localScore}/100] {candidate.Name} • {candidate.Path ?? "yol okunamadı"}");
+            reportLines.Add($"CPU ort/tepe: %{candidate.AvgCpu:F1}/%{candidate.MaxCpu:F1} • RAM tepe: {candidate.MaxRamMb:F1} MB • ↑ {candidate.SentBytesInWindow / 1048576d:F2} MB • ↓ {candidate.ReceivedBytesInWindow / 1048576d:F2} MB");
             if (candidate.localFindings.Length > 0) reportLines.Add("Bulgular: " + string.Join("; ", candidate.localFindings));
             reportLines.Add(string.Empty);
         }
