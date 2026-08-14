@@ -20,7 +20,7 @@ public sealed class WindowAssessmentTests
     public void SustainedHighCpu_IsConsistentWithInstantAssessment()
     {
         var window = RiskEngineTests.CleanWindow() with { MaxCpu = 85, AvgCpu = 70, CpuRange = 20 };
-        var instant = new ProcessObservation(42, "worker", window.Path, null, 85, 1024, true, true, "Safe Publisher", "ABC", DateTimeOffset.UtcNow);
+        var instant = new ProcessObservation(42, "worker", window.Path, null, 85, 1024, true, SignatureStatus.Valid, "Safe Publisher", "ABC", DateTimeOffset.UtcNow);
 
         var windowResult = _engine.AssessWindow(window);
         var instantResult = _engine.Assess(instant, [], null);
@@ -36,8 +36,7 @@ public sealed class WindowAssessmentTests
     {
         var window = RiskEngineTests.CleanWindow() with
         {
-            Signed = false,
-            SignatureVerificationAvailable = false,
+            SignatureStatus = SignatureStatus.Unavailable,
             WindowVisibilityAvailable = false,
             Hidden = true,
             MaxConnections = 2

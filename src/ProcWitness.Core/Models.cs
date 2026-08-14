@@ -1,6 +1,7 @@
 namespace ProcWitness.Core;
 
 public enum RiskLevel { Clean, Low, Medium, High, Critical }
+public enum SignatureStatus { Valid, ValidButExpired, Invalid, Unavailable }
 
 public sealed record ProcessObservation(
     int ProcessId,
@@ -10,12 +11,12 @@ public sealed record ProcessObservation(
     double CpuPercent,
     long WorkingSetBytes,
     bool HasVisibleWindow,
-    bool IsSigned,
+    SignatureStatus SignatureStatus,
     string? Publisher,
     string? Sha256,
     DateTimeOffset ObservedAt)
 {
-    public bool SignatureVerificationAvailable { get; init; } = true;
+    public bool SignatureVerificationAvailable => SignatureStatus != SignatureStatus.Unavailable;
     public bool WindowVisibilityAvailable { get; init; } = true;
     public long SentBytes { get; init; }
     public long ReceivedBytes { get; init; }
@@ -27,6 +28,7 @@ public sealed record ProcessObservation(
 }
 
 public sealed record Finding(string Code, string Title, string Explanation, int Score);
+public sealed record SuppressedFinding(string Code, string Reason);
 
 public sealed record ProcessAssessment(
     ProcessObservation Process,
@@ -34,6 +36,8 @@ public sealed record ProcessAssessment(
     RiskLevel Level,
     IReadOnlyList<Finding> Findings)
 {
+    public IReadOnlyList<SuppressedFinding> SuppressedFindings { get; init; } = [];
+
     public string RiskColor => Level switch
     {
         RiskLevel.Critical => "#FF385C",
@@ -68,8 +72,7 @@ public sealed record ProcessWindowSummary(
     double AvgCpu,
     double CpuRange,
     double MaxRamMb,
-    bool Signed,
-    bool SignatureVerificationAvailable,
+    SignatureStatus SignatureStatus,
     bool WindowVisibilityAvailable,
     bool Hidden,
     IReadOnlyList<string> Publishers,
@@ -88,7 +91,10 @@ public sealed record WindowAssessment(
     int Score,
     RiskLevel Level,
     bool Meaningful,
-    IReadOnlyList<Finding> Findings);
+    IReadOnlyList<Finding> Findings)
+{
+    public IReadOnlyList<SuppressedFinding> SuppressedFindings { get; init; } = [];
+}
 
 public sealed record RuleDefinition(string Code, string Title, int Weight, bool Enabled = true);
 

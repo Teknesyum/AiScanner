@@ -133,7 +133,7 @@ public sealed class TelemetryStore
             var sentDelta = group.GroupBy(x => x.ProcessId).Sum(pid => Math.Max(0, pid.Max(x => x.SentBytes) - pid.Min(x => x.SentBytes)));
             var receivedDelta = group.GroupBy(x => x.ProcessId).Sum(pid => Math.Max(0, pid.Max(x => x.ReceivedBytes) - pid.Min(x => x.ReceivedBytes)));
             var recentFile = group.Any(x => x.FileCreatedAt >= DateTimeOffset.UtcNow.AddDays(-RuleSet.MeaningfulThresholds.RecentFileDays));
-            var signatureAvailable = group.Any(x => x.SignatureVerificationAvailable);
+            var signatureStatus = AggregateSignatureStatus(group.Select(x => x.SignatureStatus));
             var visibilityAvailable = group.Any(x => x.WindowVisibilityAvailable);
             var hidden = visibilityAvailable && group.Where(x => x.WindowVisibilityAvailable).All(x => !x.HasVisibleWindow);
             var pidCount = group.Select(x => x.ProcessId).Distinct().Count();
@@ -146,8 +146,8 @@ public sealed class TelemetryStore
             var summary = new ProcessWindowSummary(
                 group.Key, first.Name, AnonymizePath(first.ExecutablePath), first.Sha256, group.Count(),
                 Math.Round(peakCpu, 1), Math.Round(averageCpu, 1), Math.Round(cpuRange, 1),
-                Math.Round(group.Max(x => x.WorkingSetBytes) / 1048576d, 1), group.Any(x => x.IsSigned),
-                signatureAvailable, visibilityAvailable, hidden,
+                Math.Round(group.Max(x => x.WorkingSetBytes) / 1048576d, 1), signatureStatus,
+                visibilityAvailable, hidden,
                 group.Select(x => x.Publisher).Where(x => x is not null).Cast<string>().Distinct().ToArray(),
                 sentDelta, receivedDelta, group.Max(x => x.ActiveConnections),
                 group.SelectMany(x => x.RemoteEndpoints).Distinct().Take(RuleSet.MeaningfulThresholds.MaxRemoteEndpoints).ToArray(),
@@ -158,15 +158,16 @@ public sealed class TelemetryStore
         var summaries = assessments.Select(x => new
         {
             x.Summary.Identity, x.Summary.Name, x.Summary.Path, x.Summary.Sha256, x.Summary.Samples,
-            x.Summary.MaxCpu, x.Summary.AvgCpu, x.Summary.CpuRange, x.Summary.MaxRamMb, x.Summary.Signed,
-            x.Summary.SignatureVerificationAvailable, x.Summary.WindowVisibilityAvailable, x.Summary.Publishers,
+            x.Summary.MaxCpu, x.Summary.AvgCpu, x.Summary.CpuRange, x.Summary.MaxRamMb, x.Summary.SignatureStatus,
+            x.Summary.WindowVisibilityAvailable, x.Summary.Publishers,
             x.Summary.SentBytesInWindow, x.Summary.ReceivedBytesInWindow, x.Summary.MaxConnections,
             x.Summary.RemoteEndpoints, x.Summary.RecentFile, x.Summary.PidCount, x.Summary.FirstSeenUtc,
             x.Summary.LastSeenUtc, x.Summary.Milestones,
             localScore = x.Score,
             localLevel = x.Level,
             localFindings = x.Findings.Select(f => f.Explanation).ToArray(),
-            findings = x.Findings
+            findings = x.Findings,
+            suppressedFindings = x.SuppressedFindings
         }).ToArray();
         var candidateKeys = assessments.Select(x => x.Summary.Identity).ToHashSet(StringComparer.OrdinalIgnoreCase);
 
@@ -189,7 +190,8 @@ public sealed class TelemetryStore
                     sentBytesInWindow = "ETW etkinse seçili zaman aralığında süreç tarafından gönderilen gerçek TCP/IP bayt farkı.",
                     receivedBytesInWindow = "ETW etkinse seçili zaman aralığında süreç tarafından alınan gerçek TCP/IP bayt farkı.",
                     workingSetBytes = "Sürecin fiziksel bellek çalışma kümesi.",
-                    isSigned = "Sertifika zinciri yerel olarak doğrulandı; tek başına güven kanıtı değildir.",
+                    signatureStatus = "Valid, ValidButExpired, Invalid veya Unavailable; tek başına güven kanıtı değildir.",
+                    suppressedFindings = "Güvenilir ve doğrulanmış yayıncı nedeniyle puana eklenmeyen, şeffaflık için korunan bulgular.",
                     sha256 = "Aynı dosyayı farklı PID'ler arasında ilişkilendirmek için kullan.",
                     hasVisibleWindow = "false olması tek başına kötü niyet göstergesi değildir."
                 },
@@ -230,7 +232,7 @@ public sealed class TelemetryStore
                     cpuPercent = Math.Round(x.CpuPercent, 1),
                     x.WorkingSetBytes,
                     x.HasVisibleWindow,
-                    x.IsSigned,
+                    x.SignatureStatus,
                     x.Publisher,
                     x.Sha256,
                     x.SentBytes,
@@ -273,5 +275,14 @@ public sealed class TelemetryStore
         return !string.IsNullOrWhiteSpace(profile) && path.StartsWith(profile, StringComparison.OrdinalIgnoreCase)
             ? "%USERPROFILE%" + path[profile.Length..]
             : path;
+    }
+
+    private static SignatureStatus AggregateSignatureStatus(IEnumerable<SignatureStatus> statuses)
+    {
+        var values = statuses.ToArray();
+        if (values.Contains(SignatureStatus.Valid)) return SignatureStatus.Valid;
+        if (values.Contains(SignatureStatus.ValidButExpired)) return SignatureStatus.ValidButExpired;
+        if (values.Contains(SignatureStatus.Invalid)) return SignatureStatus.Invalid;
+        return SignatureStatus.Unavailable;
     }
 }

@@ -11,18 +11,20 @@ public sealed class RiskEngine : IRiskEngine
     public ProcessAssessment Assess(ProcessObservation process, IReadOnlyCollection<UsageSample> history, DateTimeOffset? lastTaskManagerStart)
     {
         var findings = new List<Finding>();
-        if (process.SignatureVerificationAvailable && !process.IsSigned && process.ExecutablePath is not null)
+        var suppressed = new List<SuppressedFinding>();
+        var trustedPublisher = PublisherTrustList.IsTrusted(process.SignatureStatus, process.Publisher);
+        if (process.SignatureStatus == SignatureStatus.Invalid && process.ExecutablePath is not null)
             Add(findings, "unsigned", "Dosyanın doğrulanabilir bir yayıncı imzası yok.");
         if (process.ExecutablePath is not null && SuspiciousRoots.Any(root =>
                 !string.IsNullOrWhiteSpace(root) && process.ExecutablePath.StartsWith(root, StringComparison.OrdinalIgnoreCase)))
-            Add(findings, "user-writable-path", process.ExecutablePath);
+            AddOrSuppress(findings, suppressed, "user-writable-path", process.ExecutablePath, trustedPublisher);
         if (process.CpuPercent >= 70)
             Add(findings, "high-cpu", $"Anlık CPU kullanımı %{process.CpuPercent:F1}.");
         else if (process.CpuPercent >= 35)
             Add(findings, "elevated-cpu", $"Anlık CPU kullanımı %{process.CpuPercent:F1}.");
         if (process.WindowVisibilityAvailable && !process.HasVisibleWindow && process.CpuPercent >= 35)
-            Add(findings, "hidden-load", "Arka plandaki süreç anlamlı işlemci gücü tüketiyor.");
-        if (process.SignatureVerificationAvailable && !process.IsSigned && process.ActiveConnections > 0)
+            AddOrSuppress(findings, suppressed, "hidden-load", "Arka plandaki süreç anlamlı işlemci gücü tüketiyor.", trustedPublisher);
+        if (process.SignatureStatus == SignatureStatus.Invalid && process.ActiveConnections > 0)
             Add(findings, "unsigned-network", $"{process.ActiveConnections} etkin uzak bağlantı gözlendi.");
         if (process.FileCreatedAt is { } created && created >= DateTimeOffset.UtcNow.AddDays(-7) && process.ActiveConnections > 0)
             Add(findings, "recent-network-binary", $"Dosya oluşturma zamanı: {created.LocalDateTime:g}.");
@@ -30,24 +32,26 @@ public sealed class RiskEngine : IRiskEngine
             Add(findings, "background-upload", $"İzleme başladığından beri {process.SentMegabytes:F1} MB gönderildi.");
         AddTaskManagerEvasionFinding(process, history, lastTaskManagerStart, findings);
         var (score, level) = Score(findings);
-        return new(process, score, level, findings);
+        return new(process, score, level, findings) { SuppressedFindings = suppressed };
     }
 
     public WindowAssessment AssessWindow(ProcessWindowSummary summary)
     {
         var findings = new List<Finding>();
-        if (summary.SignatureVerificationAvailable && !summary.Signed && summary.Path is not null)
+        var suppressed = new List<SuppressedFinding>();
+        var trustedPublisher = summary.Publishers.Any(x => PublisherTrustList.IsTrusted(summary.SignatureStatus, x));
+        if (summary.SignatureStatus == SignatureStatus.Invalid && summary.Path is not null)
             Add(findings, "unsigned", "Dosyanın doğrulanabilir bir yayıncı imzası yok.");
         if (summary.Path is not null && SuspiciousRoots.Any(root =>
                 !string.IsNullOrWhiteSpace(root) && summary.Path.StartsWith(root, StringComparison.OrdinalIgnoreCase)))
-            Add(findings, "user-writable-path", summary.Path);
+            AddOrSuppress(findings, suppressed, "user-writable-path", summary.Path, trustedPublisher);
         if (summary.MaxCpu >= 70 && summary.AvgCpu >= 35)
             Add(findings, "high-cpu", $"Sürekli yüksek CPU: ort. %{summary.AvgCpu:F1}, tepe %{summary.MaxCpu:F1}.");
         else if (summary.MaxCpu >= 40 && summary.CpuRange >= 25)
             Add(findings, "cpu-spike", $"CPU aralığı {summary.CpuRange:F1} puan.");
         else if (summary.MaxCpu >= 35)
             Add(findings, "elevated-cpu", $"Tepe CPU kullanımı %{summary.MaxCpu:F1}.");
-        if (summary.SignatureVerificationAvailable && !summary.Signed && summary.MaxConnections > 0)
+        if (summary.SignatureStatus == SignatureStatus.Invalid && summary.MaxConnections > 0)
             Add(findings, "unsigned-network", $"{summary.MaxConnections} etkin uzak bağlantı gözlendi.");
         if (summary.RecentFile && summary.MaxConnections > 0)
             Add(findings, "recent-network-binary", "Son 7 günde oluşturulmuş dosya ağ kullandı.");
@@ -59,16 +63,27 @@ public sealed class RiskEngine : IRiskEngine
             Add(findings, "high-download", $"Seçili aralıkta {summary.ReceivedBytesInWindow / 1048576d:F1} MB alındı.");
         if (summary.WindowVisibilityAvailable && summary.Hidden &&
             (summary.MaxCpu >= 35 || summary.SentBytesInWindow >= 1024 * 1024))
-            Add(findings, "hidden-load", "Görünür pencere olmadan yoğun kaynak veya ağ kullanımı gözlendi.");
+            AddOrSuppress(findings, suppressed, "hidden-load", "Görünür pencere olmadan yoğun kaynak veya ağ kullanımı gözlendi.", trustedPublisher);
         if (summary.PidCount > 1)
             Add(findings, "pid-respawn", $"Aynı dosya {summary.PidCount} farklı PID ile gözlendi.");
         var meaningful = summary.MaxCpu >= RuleSet.MeaningfulThresholds.PeakCpu ||
                          summary.CpuRange >= RuleSet.MeaningfulThresholds.CpuRange ||
                          summary.SentBytesInWindow >= RuleSet.MeaningfulThresholds.SentBytes ||
                          summary.ReceivedBytesInWindow >= RuleSet.MeaningfulThresholds.ReceivedBytes ||
-                         findings.Count > 0;
+                         findings.Count > 0 || suppressed.Count > 0;
         var (score, level) = Score(findings);
-        return new(summary, score, level, meaningful, findings);
+        return new(summary, score, level, meaningful, findings) { SuppressedFindings = suppressed };
+    }
+
+    private static void AddOrSuppress(
+        ICollection<Finding> findings,
+        ICollection<SuppressedFinding> suppressed,
+        string code,
+        string explanation,
+        bool trustedPublisher)
+    {
+        if (trustedPublisher) suppressed.Add(new(code, "trusted-publisher"));
+        else Add(findings, code, explanation);
     }
 
     private static void Add(ICollection<Finding> findings, string code, string explanation)

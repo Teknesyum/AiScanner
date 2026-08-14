@@ -2,6 +2,8 @@
 
 ProcWitness findings prioritize investigation; no individual finding proves malicious activity. Missing platform telemetry is marked unavailable and never treated as zero or as evidence of safety.
 
+Signature status is reported as `Valid`, `ValidButExpired`, `Invalid`, or `Unavailable`. A verified publisher on the built-in trust list suppresses only `user-writable-path` and `hidden-load`; every suppression remains in `suppressedFindings` with reason `trusted-publisher`. CPU, traffic, recent-file, and other behavior rules continue to apply.
+
 | Code | Weight | Trigger | Common benign explanations |
 |---|---:|---|---|
 | `unsigned` | 15 | Signature verification is available but the executable has no verifiable publisher signature. | Internal tools, open-source utilities, development builds. |

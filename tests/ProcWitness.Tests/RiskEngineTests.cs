@@ -45,7 +45,7 @@ public sealed class RiskEngineTests
     {
         var process = Observation(@"/usr/bin/worker", 40, false, false) with
         {
-            SignatureVerificationAvailable = false,
+            SignatureStatus = SignatureStatus.Unavailable,
             WindowVisibilityAvailable = false,
             ActiveConnections = 2
         };
@@ -105,16 +105,16 @@ public sealed class RiskEngineTests
     }
 
     private static ProcessObservation Observation(string path, double cpu, bool signed, bool visible = true) =>
-        new(42, "worker", path, DateTimeOffset.UtcNow.AddMinutes(-1), cpu, 1024, visible, signed, signed ? "Safe Publisher" : null, "ABC", DateTimeOffset.UtcNow);
+        new(42, "worker", path, DateTimeOffset.UtcNow.AddMinutes(-1), cpu, 1024, visible, signed ? SignatureStatus.Valid : SignatureStatus.Invalid, signed ? "Safe Publisher" : null, "ABC", DateTimeOffset.UtcNow);
 
     private static ProcessWindowSummary TriggerWindow(string code) => code switch
     {
-        "unsigned" => CleanWindow() with { Signed = false },
+        "unsigned" => CleanWindow() with { SignatureStatus = SignatureStatus.Invalid },
         "user-writable-path" => CleanWindow() with { Path = Path.Combine(Path.GetTempPath(), "worker.exe") },
         "elevated-cpu" => CleanWindow() with { MaxCpu = 40, AvgCpu = 20, CpuRange = 10 },
         "high-cpu" => CleanWindow() with { MaxCpu = 80, AvgCpu = 50, CpuRange = 35 },
         "hidden-load" => CleanWindow() with { Hidden = true, MaxCpu = 40, AvgCpu = 20 },
-        "unsigned-network" => CleanWindow() with { Signed = false, MaxConnections = 1 },
+        "unsigned-network" => CleanWindow() with { SignatureStatus = SignatureStatus.Invalid, MaxConnections = 1 },
         "recent-network-binary" => CleanWindow() with { RecentFile = true, MaxConnections = 1 },
         "background-upload" => CleanWindow() with { SentBytesInWindow = 11 * 1024 * 1024 },
         "cpu-spike" => CleanWindow() with { MaxCpu = 50, AvgCpu = 10, CpuRange = 30 },
@@ -126,7 +126,7 @@ public sealed class RiskEngineTests
 
     internal static ProcessWindowSummary CleanWindow() => new(
         "worker|safe|ABC", "worker", @"C:\Program Files\Safe\safe.exe", "ABC", 3,
-        2, 2, 0, 1, true, true, true, false, ["Safe Publisher"],
+        2, 2, 0, 1, SignatureStatus.Valid, true, false, ["Safe Publisher"],
         0, 0, 0, [], false, 1, DateTimeOffset.UtcNow.AddMinutes(-1), DateTimeOffset.UtcNow,
         [new(DateTimeOffset.UtcNow, 2, 1, 0, 0, 0)]);
 }

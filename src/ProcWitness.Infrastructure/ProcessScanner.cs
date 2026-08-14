@@ -35,12 +35,11 @@ public sealed class ProcessScanner
                     cpu,
                     TryGet(() => process.WorkingSet64),
                     isWindows && TryGet(() => process.MainWindowHandle != IntPtr.Zero),
-                    evidence.IsSigned,
+                    evidence.SignatureStatus,
                     evidence.Publisher,
                     evidence.Sha256,
                     now)
                 {
-                    SignatureVerificationAvailable = evidence.SignatureAvailable,
                     WindowVisibilityAvailable = isWindows,
                     FileCreatedAt = TryGet<DateTimeOffset?>(() => path is null ? null : File.GetCreationTimeUtc(path))
                 });
@@ -63,7 +62,7 @@ public sealed class ProcessScanner
 
     private async Task<FileEvidence> GetFileEvidenceAsync(string? path, CancellationToken cancellationToken)
     {
-        if (string.IsNullOrWhiteSpace(path)) return new(null, 0, DateTimeOffset.MinValue, false, null, OperatingSystem.IsWindows() || OperatingSystem.IsMacOS());
+        if (string.IsNullOrWhiteSpace(path)) return new(null, 0, DateTimeOffset.MinValue, SignatureStatus.Unavailable, null);
         try
         {
             var file = new FileInfo(path);
@@ -71,13 +70,13 @@ public sealed class ProcessScanner
             var lastWrite = file.LastWriteTimeUtc;
             if (_fileEvidence.TryGetValue(path, out var cached) && cached.Length == length && cached.LastWriteUtc == lastWrite) return cached;
             var signature = GetSignature(path);
-            var evidence = new FileEvidence(await HashFileAsync(path, cancellationToken), length, lastWrite, signature.IsSigned, signature.Publisher, signature.Available);
+            var evidence = new FileEvidence(await HashFileAsync(path, cancellationToken), length, lastWrite, signature.Status, signature.Publisher);
             _fileEvidence[path] = evidence;
             return evidence;
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.ComponentModel.Win32Exception)
         {
-            return new(null, 0, DateTimeOffset.MinValue, false, null, false);
+            return new(null, 0, DateTimeOffset.MinValue, SignatureStatus.Unavailable, null);
         }
     }
 
@@ -95,23 +94,34 @@ public sealed class ProcessScanner
         return Math.Clamp(result, 0, 100);
     }
 
-    private static (bool IsSigned, string? Publisher, bool Available) GetSignature(string? path)
+    internal static (SignatureStatus Status, string? Publisher) GetSignature(string? path)
     {
-        if (string.IsNullOrWhiteSpace(path)) return (false, null, OperatingSystem.IsWindows() || OperatingSystem.IsMacOS());
+        if (string.IsNullOrWhiteSpace(path)) return (SignatureStatus.Unavailable, null);
         if (OperatingSystem.IsMacOS()) return GetMacSignature(path);
-        if (!OperatingSystem.IsWindows()) return (false, null, false);
+        if (!OperatingSystem.IsWindows()) return (SignatureStatus.Unavailable, null);
         try
         {
 #pragma warning disable SYSLIB0057 // Authenticode gömülü sertifikasını dosyadan okuyan modern eşdeğer API henüz yok.
             using var certificate = new X509Certificate2(X509Certificate.CreateFromSignedFile(path));
 #pragma warning restore SYSLIB0057
             using var chain = new X509Chain { ChainPolicy = { RevocationMode = X509RevocationMode.NoCheck } };
-            return (chain.Build(certificate), certificate.GetNameInfo(X509NameType.SimpleName, false), true);
+            var valid = chain.Build(certificate);
+            var publisher = certificate.GetNameInfo(X509NameType.SimpleName, false);
+            return (ClassifyChain(valid, chain.ChainStatus.Select(x => x.Status)), publisher);
         }
-        catch (CryptographicException) { return (false, null, true); }
+        catch (CryptographicException) { return (SignatureStatus.Invalid, null); }
     }
 
-    private static (bool IsSigned, string? Publisher, bool Available) GetMacSignature(string path)
+    internal static SignatureStatus ClassifyChain(bool valid, IEnumerable<X509ChainStatusFlags> statuses)
+    {
+        if (valid) return SignatureStatus.Valid;
+        var values = statuses.ToArray();
+        var timeOnly = values.Length > 0 && values.All(x =>
+            (x & ~(X509ChainStatusFlags.NotTimeValid | X509ChainStatusFlags.NotTimeNested)) == X509ChainStatusFlags.NoError);
+        return timeOnly ? SignatureStatus.ValidButExpired : SignatureStatus.Invalid;
+    }
+
+    private static (SignatureStatus Status, string? Publisher) GetMacSignature(string path)
     {
         try
         {
@@ -122,15 +132,15 @@ public sealed class ProcessScanner
                 CreateNoWindow = true,
                 ArgumentList = { "--verify", "--strict", path }
             });
-            if (process is null) return (false, null, false);
+            if (process is null) return (SignatureStatus.Unavailable, null);
             if (!process.WaitForExit(3000))
             {
                 try { process.Kill(true); } catch (InvalidOperationException) { }
-                return (false, null, false);
+                return (SignatureStatus.Unavailable, null);
             }
-            return (process.ExitCode == 0, "Apple code signature", true);
+            return (process.ExitCode == 0 ? SignatureStatus.Valid : SignatureStatus.Invalid, "Apple code signature");
         }
-        catch { return (false, null, false); }
+        catch { return (SignatureStatus.Unavailable, null); }
     }
 
     private static async Task<string?> HashFileAsync(string? path, CancellationToken cancellationToken)
@@ -150,5 +160,5 @@ public sealed class ProcessScanner
         catch (Exception ex) when (ex is InvalidOperationException or System.ComponentModel.Win32Exception or NotSupportedException) { return fallback; }
     }
 
-    private sealed record FileEvidence(string? Sha256, long Length, DateTimeOffset LastWriteUtc, bool IsSigned, string? Publisher, bool SignatureAvailable);
+    private sealed record FileEvidence(string? Sha256, long Length, DateTimeOffset LastWriteUtc, SignatureStatus SignatureStatus, string? Publisher);
 }
