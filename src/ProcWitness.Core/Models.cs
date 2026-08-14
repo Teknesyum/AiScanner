@@ -218,31 +218,34 @@ public sealed record WindowAssessment(
     public IReadOnlyList<SuppressedFinding> SuppressedFindings { get; init; } = [];
 }
 
-public sealed record RuleDefinition(string Code, string Title, int Weight, bool Enabled = true);
+public sealed record RuleDefinition(string Code, string TitleKey, int Weight, bool Enabled = true)
+{
+    public string Title => CoreLocalization.Get(TitleKey);
+}
 
 public static class RuleSet
 {
     public static readonly IReadOnlyDictionary<string, RuleDefinition> Rules = new RuleDefinition[]
     {
-        new("unsigned", "Dijital imza doğrulanamadı", 15),
-        new("user-writable-path", "Kullanıcı tarafından yazılabilir dizinden çalışıyor", 15),
-        new("elevated-cpu", "Yüksek CPU kullanımı", 10),
-        new("high-cpu", "Çok yüksek CPU kullanımı", 20),
-        new("hidden-load", "Görünür pencere olmadan yoğun çalışıyor", 10),
-        new("unsigned-network", "İmzasız süreç dış ağ bağlantısı kuruyor", 20),
-        new("recent-network-binary", "Yeni oluşturulmuş dosya ağ kullanıyor", 15),
-        new("background-upload", "Arka planda yüksek veri gönderimi", 20),
-        new("taskmgr-evasion", "Görev Yöneticisi açılınca yükünü kesti", 30),
-        new("cpu-spike", "Belirgin CPU sıçraması", 15),
-        new("meaningful-upload", "Anlamlı upload", 8),
-        new("high-download", "Yüksek download", 8),
-        new("pid-respawn", "Aynı dosya farklı PID ile gözlendi", 10)
-        ,new("suspicious-launch-chain", "Şüpheli başlatma zinciri", 20)
-        ,new("persistent", "Kalıcılık kaydıyla eşleşen süreç", 15)
-        ,new("persistent-unsigned-network", "İmzasız kalıcı süreç ağ kullanıyor", 30)
-        ,new("new-since-baseline", "Baseline sonrasında eklendi", 10)
-        ,new("binary-changed-since-baseline", "İkili baseline sonrasında değişti", 25)
-        ,new("new-persistence-since-baseline", "Yeni kalıcılık kaydı", 25)
+        new("unsigned", "Rule.unsigned.Title", 15),
+        new("user-writable-path", "Rule.user-writable-path.Title", 15),
+        new("elevated-cpu", "Rule.elevated-cpu.Title", 10),
+        new("high-cpu", "Rule.high-cpu.Title", 20),
+        new("hidden-load", "Rule.hidden-load.Title", 10),
+        new("unsigned-network", "Rule.unsigned-network.Title", 20),
+        new("recent-network-binary", "Rule.recent-network-binary.Title", 15),
+        new("background-upload", "Rule.background-upload.Title", 20),
+        new("taskmgr-evasion", "Rule.taskmgr-evasion.Title", 30),
+        new("cpu-spike", "Rule.cpu-spike.Title", 15),
+        new("meaningful-upload", "Rule.meaningful-upload.Title", 8),
+        new("high-download", "Rule.high-download.Title", 8),
+        new("pid-respawn", "Rule.pid-respawn.Title", 10),
+        new("suspicious-launch-chain", "Rule.suspicious-launch-chain.Title", 20),
+        new("persistent", "Rule.persistent.Title", 15),
+        new("persistent-unsigned-network", "Rule.persistent-unsigned-network.Title", 30),
+        new("new-since-baseline", "Rule.new-since-baseline.Title", 10),
+        new("binary-changed-since-baseline", "Rule.binary-changed-since-baseline.Title", 25),
+        new("new-persistence-since-baseline", "Rule.new-persistence-since-baseline.Title", 25)
     }.ToDictionary(x => x.Code, StringComparer.Ordinal);
 
     public static class MeaningfulThresholds

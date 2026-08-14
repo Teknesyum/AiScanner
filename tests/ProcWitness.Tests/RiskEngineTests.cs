@@ -62,7 +62,7 @@ public sealed class RiskEngineTests
         var risky = _engine.Assess(Observation(Path.Combine(Path.GetTempPath(), "worker.exe"), 80, false, false), [], null);
         var clean = _engine.Assess(Observation(@"C:\Program Files\Safe\safe.exe", 1, true), [], null);
         var prompt = new AiAnalysisPromptBuilder().Build([risky, clean], DateTimeOffset.UtcNow);
-        Assert.Contains("TELEMETRİ_JSON", prompt);
+        Assert.Contains("TELEMETRY_JSON", prompt);
         Assert.Contains("worker", prompt);
         Assert.DoesNotContain("safe.exe", prompt);
         Assert.Contains("%USERPROFILE%", prompt);
@@ -76,7 +76,17 @@ public sealed class RiskEngineTests
         Assert.Contains(path, prompt);
         Assert.Contains("processSummaries", prompt);
         Assert.Contains("snapshots", prompt);
-        Assert.Contains("5000 süreç gözlemi", prompt);
+        Assert.Contains("5000 process observations", prompt);
+    }
+
+    [Fact]
+    public void PromptLanguageCanSwitchWithoutRestart()
+    {
+        var builder = new AiAnalysisPromptBuilder();
+        var english = builder.BuildForLocalBundle("bundle.json", TimeSpan.FromMinutes(5), 2, 10, "en");
+        var turkish = builder.BuildForLocalBundle("bundle.json", TimeSpan.FromMinutes(5), 2, 10, "tr");
+        Assert.Contains("detailed English report", english);
+        Assert.Contains("ayrıntılı Türkçe rapor", turkish);
     }
 
     public static TheoryData<string> RuleCodes => new(RuleSet.Rules.Keys.ToArray());

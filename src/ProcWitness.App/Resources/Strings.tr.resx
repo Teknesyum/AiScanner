@@ -1,0 +1,49 @@
+﻿<?xml version="1.0" encoding="utf-8"?><root><resheader name="resmimetype"><value>text/microsoft-resx</value></resheader><resheader name="version"><value>2.0</value></resheader><resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader><resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader><data name="Ui.Scan" xml:space="preserve"><value>Tarama</value></data><data name="Ui.HowToUse" xml:space="preserve"><value>Nasıl Kullanılır?</value></data><data name="Ui.Information" xml:space="preserve"><value>Bilgi</value></data><data name="Ui.TimedAnalysis" xml:space="preserve"><value>Süreli Analiz ▼</value></data><data name="Ui.PromptLocation" xml:space="preserve"><value>Prompt Konumu</value></data><data name="Ui.OpenAnalysis" xml:space="preserve"><value>Analizi Aç</value></data><data name="Ui.PROCESS" xml:space="preserve"><value>SÜREÇ</value></data><data name="Ui.NET" xml:space="preserve"><value>AĞ</value></data><data name="Ui.SCORE" xml:space="preserve"><value>SKOR</value></data><data name="Ui.RISK" xml:space="preserve"><value>RİSK</value></data><data name="Ui.PUBLISHER" xml:space="preserve"><value>YAYINCI</value></data><data name="Ui.FINDINGS" xml:space="preserve"><value>BULGULAR</value></data><data name="Ui.TIMEDANALYSISREPORT" xml:space="preserve"><value>SÜRELİ ANALİZ RAPORU</value></data><data name="Ui.PROCWITNESSIN5STEPS" xml:space="preserve"><value>5 ADIMDA PROCWITNESS</value></data><data name="Ui.QuickGuideToScanningAndAIReports" xml:space="preserve"><value>Tarama ve AI raporu için kısa kullanım rehberi</value></data><data name="Ui.PROCWITNESSTECHNICALGUIDE" xml:space="preserve"><value>PROCWITNESS TEKNİK REHBERİ</value></data><data name="Ui.ChooseAnalysisDuration" xml:space="preserve"><value>Analiz süresini seçin</value></data><data name="Ui.TheMenuClosesAfterSelectionAndThe" xml:space="preserve"><value>Seçimden sonra pencere kapanır ve geri sayım Şimdi Tara düğmesinde görünür.</value></data><data name="Ui.1Minute" xml:space="preserve"><value>1 dakika</value></data><data name="Ui.5Minutes" xml:space="preserve"><value>5 dakika</value></data><data name="Ui.10Minutes" xml:space="preserve"><value>10 dakika</value></data><data name="Ui.20Minutes" xml:space="preserve"><value>20 dakika</value></data><data name="Ui.Start" xml:space="preserve"><value>Başlat</value></data><data name="Ui.OpenDataFolder" xml:space="preserve"><value>Veri klasörünü aç</value></data><data name="Ui.01DATACOLLECTION" xml:space="preserve"><value>01 • VERİ TOPLAMA</value></data><data name="Ui.02NETWORKOBSERVATION" xml:space="preserve"><value>02 • AĞ GÖZLEMİ</value></data><data name="Ui.03TIMEDMONITORING" xml:space="preserve"><value>03 • SÜRELİ DİNLEME</value></data><data name="Ui.04BEHAVIORENGINE" xml:space="preserve"><value>04 • DAVRANIŞ MOTORU</value></data><data name="Ui.05SMARTFILTER" xml:space="preserve"><value>05 • AKILLI FİLTRE</value></data><data name="Ui.06REPORTOUTPUTS" xml:space="preserve"><value>06 • RAPOR ÇIKTILARI</value></data><data name="Ui.07LIVERISKSCORING" xml:space="preserve"><value>07 • CANLI RİSK PUANLAMA</value></data><data name="Ui.08TIMESERIESANDCORRELATION" xml:space="preserve"><value>08 • ZAMAN SERİSİ VE KORELASYON</value></data><data name="Ui.09MINEREVASIONDETECTION" xml:space="preserve"><value>09 • MINER / KAÇINMA TESPİTİ</value></data><data name="Ui.10NETWORKANDDATAFLOW" xml:space="preserve"><value>10 • AĞ VE VERİ AKIŞI</value></data><data name="Ui.11AIEVIDENCEPACKAGE" xml:space="preserve"><value>11 • AI VERİ PAKETİ</value></data><data name="Ui.12PRIVACYANDLIMITS" xml:space="preserve"><value>12 • MAHREMİYET VE SINIRLAR</value></data><data name="Ui.1SCANNOW" xml:space="preserve"><value>1 • ŞİMDİ TARA  </value></data><data name="Ui.2TIMEDMONITORING" xml:space="preserve"><value>2 • SÜRELİ DİNLE  </value></data><data name="Ui.3READTHELOCALREPORT" xml:space="preserve"><value>3 • YEREL RAPORU OKU  </value></data><data name="Ui.4COPYTHEPROMPT" xml:space="preserve"><value>4 • PROMPTU KOPYALA  </value></data><data name="Ui.5VERIFYSAFELY" xml:space="preserve"><value>5 • GÜVENLİ DOĞRULA  </value></data><data name="Ui.PressScanNowRunningProcessesAreAnalyzed" xml:space="preserve"><value>Tarama sekmesindeki düğmeye basın. Çalışan süreçler yerel olarak incelenir. Bir süreci seçerek yolunu, SHA-256 değerini ve yayıncısını görün.</value></data><data name="Ui.Choose151020OrCustom" xml:space="preserve"><value>Süreli Analiz sekmesinden 1, 5, 10, 20 veya özel dakika seçin. Program süre dolana kadar veri toplar. Miner ve aralıklı casus yazılım davranışları için 10–20 dakika önerilir.</value></data><data name="Ui.StableLowValueProcessesAreFilteredWhen" xml:space="preserve"><value>Süre bitince önemsiz ve kararlı süreçler elenir. Yüksek puan kesin zararlı demek değildir; önce incelenmesi gereken adayı gösterir.</value></data><data name="Ui.ClickCopyPromptTheButtonTurnsGreen" xml:space="preserve"><value>Analiz için prompt oluştur düğmesine basın. Düğme yeşile döner ve kopyalandığını bildirir. Promptu Codex veya başka bir AI’a yapıştırın.</value></data><data name="Ui.IfTheAIRequestsEvidenceAttachThe" xml:space="preserve"><value>AI dosya isterse promptta yolu yazan analysis-*.json dosyasını yükleyin. Yol, yayıncı ve SHA-256 değerini doğrulamadan dosya silmeyin veya süreç sonlandırmayın.</value></data><data name="Ui.SustainedOrSuddenlyRisingCPUHeavyWork" xml:space="preserve"><value>• Sürekli veya aniden yükselen CPU
+• Penceresiz yoğun çalışma
+• Yeni / yazılabilir dizindeki dosyalar
+• İmza + ağ bağlantısı birleşimi
+• Yeniden doğan PID ve sıra dışı trafik</value></data><data name="Ui.ChronologicalTelemetryJsonlCorrelatedAnalysisJsonHuman" xml:space="preserve"><value>• Kronolojik telemetry.jsonl
+• Korelasyonlu analysis-*.json
+• Yerel okunabilir özet
+• Panoya hazır AI promptu
+• Dosya yolu + SHA-256 ile inceleme adayı</value></data><data name="Ui.014Clean1529Low30" xml:space="preserve"><value>• 0–14 Temiz  • 15–29 Düşük
+• 30–54 Orta  • 55–79 Yüksek
+• 80–100 Kritik
+• CPU ≥ %35 ve ≥ %70 ayrı eşiklerdir
+• Tek sinyal değil, birleşik bulgular puanlanır</value></data><data name="Ui.SamplesCorrelateByNamePathSHA256" xml:space="preserve"><value>• Örnekler ad + yol + SHA-256 ile birleşir
+• Ortalama / tepe / CPU aralığı hesaplanır
+• Tepe RAM ve ilk–son görülme tutulur
+• Farklı PID sayısı ve yeniden doğuş izlenir
+• Örnek: %5 → uzun süre %90 davranışı yakalanır</value></data><data name="Ui.SustainedHighCPUNoVisibleWindowWritable" xml:space="preserve"><value>• Sürekli yüksek CPU + penceresiz çalışma
+• Yazılabilir dizin + doğrulanamayan yayıncı
+• Görev Yöneticisi öncesi 20 sn incelenir
+• Açıldıktan sonraki 15 sn ile karşılaştırılır
+• ≥ %30 yükün %5’e / beşte birine düşmesi işaretlenir</value></data><data name="Ui.CounterDeltasAreCalculatedPerPIDUpload" xml:space="preserve"><value>• Sayaç farkları PID bazında hesaplanır
+• Upload ≥ 256 KB: anlamlı değişim
+• Upload ≥ 10 MB: yüksek sinyal
+• Download ≥ 25 MB: dikkat sinyali
+• Uzak IP/port ve süreç türü birlikte yorumlanır</value></data><data name="Ui.NoiseIsRemovedWhenPeakCPU15" xml:space="preserve"><value>• Tepe CPU &lt; %15 ve değişim &lt; 12 ise gürültü elenir
+• Ağ / yeni dosya / imza / PID sinyali korunur
+• Adaylar yerel risk skoruyla sıralanır
+• Yalnızca anlamlı zaman noktaları eklenir
+• AI’dan kanıt, belirsizlik ve yanlış pozitif istenir</value></data><data name="Ui.PIDProcessNameAndStartTimeCPU" xml:space="preserve"><value>• PID, süreç adı ve başlangıç zamanı
+• CPU ve fiziksel RAM kullanımı
+• Dosya yolu, oluşturulma zamanı ve SHA-256
+• Windows Authenticode / macOS codesign
+• Ölçülemeyen özellikler risk sayılmaz</value></data><data name="Ui.WindowsETWBytesIPHelperLinuxProc" xml:space="preserve"><value>• Windows: ETW upload/download + IP Helper
+• Linux: /proc soket–PID eşleştirmesi
+• macOS: lsof ile etkin TCP uçları
+• Uzak IP ve portlar süreçle ilişkilendirilir
+• Ölçüm yoksa 0 B güvenli kabul edilmez</value></data><data name="Ui.151020OrCustomMinutes" xml:space="preserve"><value>• 1, 5, 10, 20 veya özel dakika
+• Yaklaşık 4 saniyede bir yeni örnek
+• Canlı geri sayım
+• Eski veriler oturuma karıştırılmaz
+• Yalnızca gerçek başlangıç–bitiş aralığı raporlanır</value></data><data name="Ui.RemovesStableLowLoadNoiseKeepsCPU" xml:space="preserve"><value>• Sabit ve düşük yük üreten süreçleri eler
+• CPU sıçraması olanları korur
+• Ağ / yeni dosya / imza sinyalini korur
+• PID değişimini gözden kaçırmaz
+• AI’a yalnızca anlamlı adayları verir</value></data><data name="Ui.AllEvidenceStaysUnderProcWitnessDataNothing" xml:space="preserve"><value>• Tüm kayıtlar ProcWitness/data içinde yereldir
+• Veriler otomatik olarak internete gönderilmez
+• 256 MB sonrası son 7 gün korunarak sıkıştırılır
+• Dosya silmez, karantinaya almaz, süreç kapatmaz
+• Son karar: hash + yayıncı + antivirüs/EDR</value></data></root>

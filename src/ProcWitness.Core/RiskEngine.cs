@@ -126,7 +126,7 @@ public sealed class RiskEngine : IRiskEngine
     private static void Add(ICollection<Finding> findings, string code, string explanation)
     {
         var rule = RuleSet.Rules[code];
-        if (rule.Enabled) findings.Add(new(rule.Code, rule.Title, explanation, rule.Weight));
+        if (rule.Enabled) findings.Add(new(rule.Code, rule.Title, CoreLocalization.Language == "en" ? rule.Title : explanation, rule.Weight));
     }
 
     private static (int Score, RiskLevel Level) Score(IEnumerable<Finding> findings)

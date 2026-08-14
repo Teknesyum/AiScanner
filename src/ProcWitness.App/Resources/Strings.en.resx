@@ -1,0 +1,49 @@
+﻿<?xml version="1.0" encoding="utf-8"?><root><resheader name="resmimetype"><value>text/microsoft-resx</value></resheader><resheader name="version"><value>2.0</value></resheader><resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader><resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader><data name="Ui.Scan" xml:space="preserve"><value>Scan</value></data><data name="Ui.HowToUse" xml:space="preserve"><value>How to Use</value></data><data name="Ui.Information" xml:space="preserve"><value>Information</value></data><data name="Ui.TimedAnalysis" xml:space="preserve"><value>Timed Analysis ▼</value></data><data name="Ui.PromptLocation" xml:space="preserve"><value>Prompt Location</value></data><data name="Ui.OpenAnalysis" xml:space="preserve"><value>Open Analysis</value></data><data name="Ui.PROCESS" xml:space="preserve"><value>PROCESS</value></data><data name="Ui.NET" xml:space="preserve"><value>NET</value></data><data name="Ui.SCORE" xml:space="preserve"><value>SCORE</value></data><data name="Ui.RISK" xml:space="preserve"><value>RISK</value></data><data name="Ui.PUBLISHER" xml:space="preserve"><value>PUBLISHER</value></data><data name="Ui.FINDINGS" xml:space="preserve"><value>FINDINGS</value></data><data name="Ui.TIMEDANALYSISREPORT" xml:space="preserve"><value>TIMED ANALYSIS REPORT</value></data><data name="Ui.PROCWITNESSIN5STEPS" xml:space="preserve"><value>PROCWITNESS IN 5 STEPS</value></data><data name="Ui.QuickGuideToScanningAndAIReports" xml:space="preserve"><value>Quick guide to scanning and AI reports</value></data><data name="Ui.PROCWITNESSTECHNICALGUIDE" xml:space="preserve"><value>PROCWITNESS TECHNICAL GUIDE</value></data><data name="Ui.ChooseAnalysisDuration" xml:space="preserve"><value>Choose analysis duration</value></data><data name="Ui.TheMenuClosesAfterSelectionAndThe" xml:space="preserve"><value>The menu closes after selection and the countdown appears on Scan Now.</value></data><data name="Ui.1Minute" xml:space="preserve"><value>1 minute</value></data><data name="Ui.5Minutes" xml:space="preserve"><value>5 minutes</value></data><data name="Ui.10Minutes" xml:space="preserve"><value>10 minutes</value></data><data name="Ui.20Minutes" xml:space="preserve"><value>20 minutes</value></data><data name="Ui.Start" xml:space="preserve"><value>Start</value></data><data name="Ui.OpenDataFolder" xml:space="preserve"><value>Open Data Folder</value></data><data name="Ui.01DATACOLLECTION" xml:space="preserve"><value>01 • DATA COLLECTION</value></data><data name="Ui.02NETWORKOBSERVATION" xml:space="preserve"><value>02 • NETWORK OBSERVATION</value></data><data name="Ui.03TIMEDMONITORING" xml:space="preserve"><value>03 • TIMED MONITORING</value></data><data name="Ui.04BEHAVIORENGINE" xml:space="preserve"><value>04 • BEHAVIOR ENGINE</value></data><data name="Ui.05SMARTFILTER" xml:space="preserve"><value>05 • SMART FILTER</value></data><data name="Ui.06REPORTOUTPUTS" xml:space="preserve"><value>06 • REPORT OUTPUTS</value></data><data name="Ui.07LIVERISKSCORING" xml:space="preserve"><value>07 • LIVE RISK SCORING</value></data><data name="Ui.08TIMESERIESANDCORRELATION" xml:space="preserve"><value>08 • TIME SERIES AND CORRELATION</value></data><data name="Ui.09MINEREVASIONDETECTION" xml:space="preserve"><value>09 • MINER / EVASION DETECTION</value></data><data name="Ui.10NETWORKANDDATAFLOW" xml:space="preserve"><value>10 • NETWORK AND DATA FLOW</value></data><data name="Ui.11AIEVIDENCEPACKAGE" xml:space="preserve"><value>11 • AI EVIDENCE PACKAGE</value></data><data name="Ui.12PRIVACYANDLIMITS" xml:space="preserve"><value>12 • PRIVACY AND LIMITS</value></data><data name="Ui.1SCANNOW" xml:space="preserve"><value>1 • SCAN NOW  </value></data><data name="Ui.2TIMEDMONITORING" xml:space="preserve"><value>2 • TIMED MONITORING  </value></data><data name="Ui.3READTHELOCALREPORT" xml:space="preserve"><value>3 • READ THE LOCAL REPORT  </value></data><data name="Ui.4COPYTHEPROMPT" xml:space="preserve"><value>4 • COPY THE PROMPT  </value></data><data name="Ui.5VERIFYSAFELY" xml:space="preserve"><value>5 • VERIFY SAFELY  </value></data><data name="Ui.PressScanNowRunningProcessesAreAnalyzed" xml:space="preserve"><value>Press Scan Now. Running processes are analyzed locally. Select a process to inspect its path, SHA-256 and publisher.</value></data><data name="Ui.Choose151020OrCustom" xml:space="preserve"><value>Choose 1, 5, 10, 20 or custom minutes. The app collects evidence for the full interval. Use 10–20 minutes for miners and intermittent spyware behavior.</value></data><data name="Ui.StableLowValueProcessesAreFilteredWhen" xml:space="preserve"><value>Stable low-value processes are filtered when the timer ends. A high score is an investigation priority, not proof of malware.</value></data><data name="Ui.ClickCopyPromptTheButtonTurnsGreen" xml:space="preserve"><value>Click Copy Prompt. The button turns green and confirms the copy. Paste it into Codex or another AI.</value></data><data name="Ui.IfTheAIRequestsEvidenceAttachThe" xml:space="preserve"><value>If the AI requests evidence, attach the referenced analysis-*.json file. Verify path, publisher and SHA-256 before deleting files or stopping processes.</value></data><data name="Ui.SustainedOrSuddenlyRisingCPUHeavyWork" xml:space="preserve"><value>• Sustained or suddenly rising CPU
+• Heavy work without a visible window
+• New files in writable locations
+• Signature + network combinations
+• PID respawning and unusual traffic</value></data><data name="Ui.ChronologicalTelemetryJsonlCorrelatedAnalysisJsonHuman" xml:space="preserve"><value>• Chronological telemetry.jsonl
+• Correlated analysis-*.json
+• Human-readable local summary
+• Clipboard-ready AI prompt
+• Investigation candidates with path + SHA-256</value></data><data name="Ui.014Clean1529Low30" xml:space="preserve"><value>• 0–14 Clean  • 15–29 Low
+• 30–54 Medium  • 55–79 High
+• 80–100 Critical
+• CPU ≥ 35% and ≥ 70% are separate thresholds
+• Combined findings—not one signal—set the score</value></data><data name="Ui.SamplesCorrelateByNamePathSHA256" xml:space="preserve"><value>• Samples correlate by name + path + SHA-256
+• Average, peak and CPU range are calculated
+• Peak RAM and first/last seen are retained
+• PID count and respawning are tracked
+• Example: 5% → sustained 90% behavior is detected</value></data><data name="Ui.SustainedHighCPUNoVisibleWindowWritable" xml:space="preserve"><value>• Sustained high CPU + no visible window
+• Writable location + unverified publisher
+• 20 seconds before Task Manager are analyzed
+• Compared with 15 seconds after launch
+• A ≥30% load dropping to 5% / one fifth is flagged</value></data><data name="Ui.CounterDeltasAreCalculatedPerPIDUpload" xml:space="preserve"><value>• Counter deltas are calculated per PID
+• Upload ≥ 256 KB: meaningful change
+• Upload ≥ 10 MB: strong signal
+• Download ≥ 25 MB: attention signal
+• Remote IP/port and process role are interpreted together</value></data><data name="Ui.NoiseIsRemovedWhenPeakCPU15" xml:space="preserve"><value>• Noise is removed when peak CPU &lt;15% and change &lt;12
+• Network, new-file, signature and PID signals remain
+• Candidates are ranked by local risk score
+• Only meaningful time points are included
+• AI must report evidence, uncertainty and false positives</value></data><data name="Ui.PIDProcessNameAndStartTimeCPU" xml:space="preserve"><value>• PID, process name and start time
+• CPU and physical RAM usage
+• Executable metadata and SHA-256
+• Windows Authenticode / macOS codesign
+• Unavailable signals never increase risk</value></data><data name="Ui.WindowsETWBytesIPHelperLinuxProc" xml:space="preserve"><value>• Windows: ETW bytes + IP Helper
+• Linux: /proc socket-to-PID mapping
+• macOS: active TCP endpoints via lsof
+• Remote IPs and ports are linked to processes
+• Missing telemetry is never treated as zero traffic</value></data><data name="Ui.151020OrCustomMinutes" xml:space="preserve"><value>• 1, 5, 10, 20 or custom minutes
+• New sample about every 4 seconds
+• Live countdown
+• Previous data is excluded
+• Only the exact capture window is reported</value></data><data name="Ui.RemovesStableLowLoadNoiseKeepsCPU" xml:space="preserve"><value>• Removes stable low-load noise
+• Keeps CPU spikes
+• Keeps network, new-file and signature signals
+• Preserves PID changes
+• Sends only meaningful candidates to AI</value></data><data name="Ui.AllEvidenceStaysUnderProcWitnessDataNothing" xml:space="preserve"><value>• All evidence stays under ProcWitness/data
+• Nothing is uploaded automatically
+• Above 256 MB, the latest 7 days are retained
+• No deletion, quarantine or process termination
+• Final decision: hash + publisher + antivirus/EDR</value></data></root>

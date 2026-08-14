@@ -203,7 +203,7 @@ dotnet run --project src/ProcWitness.App/ProcWitness.App.csproj
 Create self-contained Windows x64, Linux x64, macOS x64, and macOS ARM64 archives:
 
 ```powershell
-./scripts/build-release.ps1 -Version 0.5.0
+./scripts/build-release.ps1 -Version 0.9.0
 ```
 
 The desktop UI uses [Avalonia](https://avaloniaui.net/). Windows network-byte collection uses ETW; Linux and macOS adapters use native, read-only operating-system sources.
