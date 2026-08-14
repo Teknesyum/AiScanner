@@ -15,5 +15,6 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\ProcWitness.Core\ProcWitness.Core.csproj" />
     <ProjectReference Include="..\..\src\ProcWitness.Infrastructure\ProcWitness.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\src\ProcWitness.Cli\ProcWitness.Cli.csproj" />
   </ItemGroup>
 </Project>

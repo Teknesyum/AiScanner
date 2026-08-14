@@ -9,5 +9,6 @@
   <ItemGroup>
     <ProjectReference Include="..\ProcWitness.Core\ProcWitness.Core.csproj" />
     <ProjectReference Include="..\ProcWitness.Infrastructure\ProcWitness.Infrastructure.csproj" />
+    <InternalsVisibleTo Include="ProcWitness.Tests" />
   </ItemGroup>
 </Project>

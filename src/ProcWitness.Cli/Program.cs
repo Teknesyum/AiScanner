@@ -32,6 +32,7 @@ internal static class Cli
                 "persistence" => await PersistenceAsync(session, args[1..]),
                 "baseline" => await BaselineAsync(session, args[1..]),
                 "prompt" => await PromptAsync(args[1..]),
+                "mcp" => await new McpServer(session).RunAsync(),
                 _ => Usage()
             };
         }
@@ -164,7 +165,7 @@ internal static class Cli
 
     private static int Usage()
     {
-        Console.Error.WriteLine("Usage: procwitness scan [--json] | capture --minutes N [--out file] [--format json|md|text] | persistence [--json] | baseline save|compare [--file path] [--json] | prompt --bundle path | --version");
+        Console.Error.WriteLine("Usage: procwitness scan [--json] | capture --minutes N [--out file] [--format json|md|text] | persistence [--json] | baseline save|compare [--file path] [--json] | prompt --bundle path | mcp | --version");
         return 2;
     }
 }

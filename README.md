@@ -211,6 +211,10 @@ procwitness --version
 
 Normal success returns exit code `0`, runtime failures return `1`, and invalid arguments return `2`. Findings do not change the exit code unless `scan --exit-code-on-high` is explicitly requested. In JSON mode stdout contains only JSON; status and progress go to stderr.
 
+## MCP server for Codex and Claude Code
+
+`procwitness mcp` exposes the same local collection engine through a stdio MCP server. An AI client can list processes, start a non-blocking capture, poll progress, read a context-safe bundle summary, inspect persistence, compare a baseline, and request one process in detail. See [the MCP setup and security guide](docs/MCP.md).
+
 ## Privacy and responsible use
 
 - no automatic upload or cloud dependency
