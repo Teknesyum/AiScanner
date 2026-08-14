@@ -21,11 +21,12 @@ public sealed class TelemetryStore
     private readonly IRiskEngine _riskEngine;
     private PersistenceInventory? _persistenceInventory;
     private BaselineComparison? _baselineComparison;
+    public bool IncludeRawSnapshots { get; set; }
 
     public string DataDirectory { get; }
     public string TelemetryPath => Path.Combine(DataDirectory, "telemetry.jsonl");
 
-    public void SetPersistenceInventory(PersistenceInventory inventory) => _persistenceInventory = inventory;
+    public void SetPersistenceInventory(PersistenceInventory? inventory) => _persistenceInventory = inventory;
     public void SetBaselineComparison(BaselineComparison? comparison) => _baselineComparison = comparison;
 
     public TelemetryStore(IRiskEngine? riskEngine = null, string? dataDirectory = null)
@@ -257,7 +258,7 @@ public sealed class TelemetryStore
             processSummaries = summaries,
             persistence = _persistenceInventory,
             processTree = processTreeNodes.Values.OrderBy(x => x.ProcessId).ToArray(),
-            snapshots = snapshots.Select((snapshot, index) => new
+            snapshots = IncludeRawSnapshots ? snapshots.Select((snapshot, index) => new
             {
                 lineHint = $"snapshots[{index}]",
                 snapshot.CapturedAt,
@@ -284,7 +285,7 @@ public sealed class TelemetryStore
                     x.CommandLineAvailable,
                     x.ProcessTreeAvailable
                 })
-            })
+            }).ToArray() : null
         };
 
         var bundlePath = Path.Combine(DataDirectory, $"analysis-{DateTime.Now:yyyyMMdd-HHmmss}-{requestedDuration.TotalMinutes:0.##}m.json");
@@ -331,4 +332,14 @@ public sealed class TelemetryStore
 
     private static bool MatchesBaseline(string? path, IReadOnlyList<BaselineDifferenceItem>? items) =>
         path is not null && items?.Any(x => x.Path is not null && string.Equals(path, x.Path, OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal)) == true;
+
+    public void Prune(int retentionDays)
+    {
+        if (!Directory.Exists(DataDirectory)) return;
+        var cutoff = DateTime.UtcNow.AddDays(-Math.Clamp(retentionDays, 1, 365));
+        foreach (var path in Directory.EnumerateFiles(DataDirectory).Where(x => File.GetLastWriteTimeUtc(x) < cutoff))
+        {
+            try { File.Delete(path); } catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
+        }
+    }
 }

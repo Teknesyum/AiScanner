@@ -32,6 +32,7 @@ internal static class Cli
                 "persistence" => await PersistenceAsync(session, args[1..]),
                 "baseline" => await BaselineAsync(session, args[1..]),
                 "prompt" => await PromptAsync(args[1..]),
+                "report" => await ReportAsync(session, args[1..]),
                 "mcp" => await new McpServer(session).RunAsync(),
                 _ => Usage()
             };
@@ -128,6 +129,33 @@ internal static class Cli
         return 0;
     }
 
+    private static async Task<int> ReportAsync(CaptureSession session, string[] args)
+    {
+        var bundle = Option(args, "--bundle") ?? throw new ArgumentException("report requires --bundle <path>.");
+        if (!args.Contains("--ai")) throw new ArgumentException("report requires the explicit --ai option.");
+        EnsureKnown(args, "--bundle", "--ai", "--yes");
+        bundle = Path.GetFullPath(bundle);
+        if (!File.Exists(bundle)) throw new ArgumentException($"Bundle not found: {bundle}");
+        var settingsDirectory = Path.GetDirectoryName(session.Store.DataDirectory)!;
+        var settings = await new AppSettingsStore(Path.Combine(settingsDirectory, "settings.json")).LoadAsync();
+        if (!settings.AiEnabled) throw new ArgumentException("Direct AI reports are disabled. Enable them in ProcWitness Settings first.");
+        var key = await new SecretStore(settingsDirectory).LoadAsync();
+        if (string.IsNullOrWhiteSpace(key)) throw new ArgumentException("No securely stored API key is available. Save one in ProcWitness Settings first.");
+        var service = new AiReportService();
+        var info = await service.InspectAsync(bundle, settings);
+        Console.Error.WriteLine($"Send {Path.GetFileName(info.BundlePath)} ({info.Bytes} bytes, {info.ProcessCount} processes, ~{info.EstimatedTokens} tokens) to {info.Provider} at {info.Endpoint} using {info.Model}?");
+        if (!args.Contains("--yes"))
+        {
+            if (Console.IsInputRedirected) throw new ArgumentException("Confirmation is required. Re-run interactively or pass --yes after reviewing the destination.");
+            Console.Error.Write("Type yes to send: ");
+            if (!string.Equals(Console.ReadLine(), "yes", StringComparison.OrdinalIgnoreCase)) { Console.Error.WriteLine("Cancelled; no data was sent."); return 3; }
+        }
+        var result = await service.GenerateAsync(bundle, settings, key);
+        Console.WriteLine(result.Markdown);
+        Console.Error.WriteLine($"Saved: {result.Path}");
+        return 0;
+    }
+
     private static object ToJson(ProcessAssessment item) => new
     {
         pid = item.Process.ProcessId,
@@ -165,7 +193,7 @@ internal static class Cli
 
     private static int Usage()
     {
-        Console.Error.WriteLine("Usage: procwitness scan [--json] | capture --minutes N [--out file] [--format json|md|text] | persistence [--json] | baseline save|compare [--file path] [--json] | prompt --bundle path | mcp | --version");
+        Console.Error.WriteLine("Usage: procwitness scan [--json] | capture --minutes N [--out file] [--format json|md|text] | persistence [--json] | baseline save|compare [--file path] [--json] | prompt --bundle path | report --bundle path --ai [--yes] | mcp | --version");
         return 2;
     }
 }

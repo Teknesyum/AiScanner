@@ -19,7 +19,7 @@ public static partial class CommandLineRedactor
     [GeneratedRegex("""(?i)((?:--?(?:password|token)|apikey)\s*=\s*)(?:"[^"]*"|'[^']*'|[^\s]+)""")]
     private static partial Regex AssignmentSecret();
 
-    [GeneratedRegex("""(?i)((?:^|\s)-p\s+)(?:"[^"]*"|'[^']*'|[^\s]+)""")]
+    [GeneratedRegex("""(?i)((?:^|\s)(?:-p|--?(?:password|token)|apikey)\s+)(?:"[^"]*"|'[^']*'|[^\s]+)""")]
     private static partial Regex SpaceSecret();
 
     [GeneratedRegex(@"(?i)(Bearer\s+)[A-Za-z0-9._~+\-/=]+")]

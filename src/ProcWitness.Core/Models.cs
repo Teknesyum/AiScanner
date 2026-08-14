@@ -2,6 +2,34 @@ namespace ProcWitness.Core;
 
 public enum RiskLevel { Clean, Low, Medium, High, Critical }
 public enum SignatureStatus { Valid, ValidButExpired, Invalid, Unavailable }
+public enum AiProvider { Anthropic, OpenAI, Compatible }
+
+public sealed record AppSettings
+{
+    public string Language { get; init; } = "Auto";
+    public int SampleIntervalSeconds { get; init; } = 4;
+    public bool AutoScanOnStartup { get; init; } = true;
+    public int RetentionDays { get; init; } = 7;
+    public double DefaultCaptureMinutes { get; init; } = 5;
+    public bool PersistenceEnabled { get; init; } = true;
+    public bool PublisherAllowlistEnabled { get; init; } = true;
+    public bool IncludeRawSnapshots { get; init; }
+    public bool AiEnabled { get; init; }
+    public AiProvider AiProvider { get; init; } = AiProvider.Anthropic;
+    public string AiModel { get; init; } = "claude-opus-4-1-20250805";
+    public string AiEndpoint { get; init; } = "https://api.anthropic.com";
+}
+
+public sealed record AiReportRequestInfo(
+    string BundlePath,
+    long Bytes,
+    int ProcessCount,
+    AiProvider Provider,
+    string Endpoint,
+    string Model,
+    int EstimatedTokens);
+
+public sealed record AiReportResult(string Path, string Markdown, bool Partial = false);
 
 public sealed record ProcessObservation(
     int ProcessId,

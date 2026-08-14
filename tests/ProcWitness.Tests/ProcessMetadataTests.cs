@@ -8,7 +8,7 @@ public sealed class ProcessMetadataTests
 {
     [Theory]
     [InlineData("tool --password=hunter2", "tool --password=***")]
-    [InlineData("tool --token secret", "tool --token secret")]
+    [InlineData("tool --token secret", "tool --token ***")]
     [InlineData("tool --token=abc123", "tool --token=***")]
     [InlineData("tool -p hunter2", "tool -p ***")]
     [InlineData("tool apikey=secret", "tool apikey=***")]

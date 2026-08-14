@@ -123,6 +123,20 @@ Click **Open data folder** in **Timed Analysis**. The folder contains:
 
 ProcWitness does not upload these files automatically. You decide if and where they are shared.
 
+### Optional direct AI report
+
+The **Settings** tab can enable an opt-in Anthropic, OpenAI, or compatible REST provider. It stores the API key with Windows DPAPI, macOS Keychain, or Linux libsecret when available; if secure Linux storage is unavailable, the key remains in memory for the current session only. Direct AI is disabled by default and every request shows the destination, payload size, process count, model, and estimated tokens for confirmation.
+
+Only the bundle metadata, process summaries, persistence summary, and baseline comparison are sent by default. Raw snapshots require a separate setting. Paths and command-line secrets are redacted again immediately before transmission, and reports are saved locally as `ai-report-*.md`.
+
+The same explicit workflow is available from the CLI:
+
+```text
+procwitness report --bundle analysis-20260101-120000.json --ai
+```
+
+Use `--yes` only in automation where the provider and payload have already been reviewed.
+
 ### Reading results safely
 
 Scores combine several indicators, including sustained CPU load, rapid changes, writable-path execution, recent binaries, unsigned network activity where signature verification exists, PID respawning and unusual network behavior. Normal developer tools, game launchers, backup clients and update services can trigger similar signals.
@@ -173,7 +187,7 @@ Missing telemetry is recorded as **unavailable**, never as zero activity or evid
 
 ## Local data and AI workflow
 
-Data is stored under the operating system's local application-data directory in `ProcWitness/data`. The generated prompt contains the exact analysis bundle path, explains its schema, marks unavailable capabilities, and asks the AI to produce an evidence-based report. The app never uploads data by itself, kills processes, deletes files, or quarantines software.
+Data is stored under the operating system's local application-data directory in `ProcWitness/data`. The generated prompt contains the exact analysis bundle path, explains its schema, marks unavailable capabilities, and asks the AI to produce an evidence-based report. The app never uploads data unless you enable direct AI reporting and approve that specific request. It never kills processes, deletes monitored files, or quarantines software; the only deletion command removes ProcWitness's own local evidence after confirmation.
 
 ProcWitness is a triage and investigation aid, not a replacement for antivirus/EDR or professional incident response.
 

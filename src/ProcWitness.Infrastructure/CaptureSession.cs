@@ -29,6 +29,10 @@ public sealed class CaptureSession : IDisposable
     public BaselineComparison? BaselineComparison { get; private set; }
     public IReadOnlyList<ProcessObservation> LatestProcesses { get; private set; } = [];
     public TimeSpan SampleInterval { get; set; } = TimeSpan.FromSeconds(4);
+    public bool PersistenceEnabled { get; set; } = true;
+    public int RetentionDays { get; set; } = 7;
+    public bool PublisherAllowlistEnabled { get => (_riskEngine as RiskEngine)?.PublisherAllowlistEnabled ?? true; set { if (_riskEngine is RiskEngine engine) engine.PublisherAllowlistEnabled = value; } }
+    public bool IncludeRawSnapshots { get => Store.IncludeRawSnapshots; set => Store.IncludeRawSnapshots = value; }
 
     private static StringComparer PathComparer => OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal;
 
@@ -81,7 +85,8 @@ public sealed class CaptureSession : IDisposable
     public async Task<AnalysisBundleResult> CaptureAsync(TimeSpan duration, IProgress<CaptureProgress>? progress = null, CancellationToken cancellationToken = default)
     {
         if (duration <= TimeSpan.Zero) throw new ArgumentOutOfRangeException(nameof(duration));
-        await RefreshPersistenceAsync(cancellationToken);
+        Store.Prune(RetentionDays);
+        if (PersistenceEnabled) await RefreshPersistenceAsync(cancellationToken); else Store.SetPersistenceInventory(null);
         var started = DateTimeOffset.UtcNow;
         var ends = started + duration;
         var latest = await ScanAsync(true, cancellationToken);
@@ -99,7 +104,7 @@ public sealed class CaptureSession : IDisposable
         }
         latest = await ScanAsync(true, cancellationToken);
         progress?.Report(new(TimeSpan.Zero, latest));
-        await RefreshPersistenceAsync(cancellationToken);
+        if (PersistenceEnabled) await RefreshPersistenceAsync(cancellationToken);
         return await Store.CreateAnalysisBundleAsync(started, DateTimeOffset.UtcNow, duration, cancellationToken);
     }
 

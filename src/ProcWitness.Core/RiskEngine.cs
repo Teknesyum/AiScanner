@@ -2,6 +2,7 @@ namespace ProcWitness.Core;
 
 public sealed class RiskEngine : IRiskEngine
 {
+    public bool PublisherAllowlistEnabled { get; set; } = true;
     private static readonly string[] SuspiciousRoots =
     [
         Path.GetTempPath(),
@@ -15,7 +16,7 @@ public sealed class RiskEngine : IRiskEngine
     {
         var findings = new List<Finding>();
         var suppressed = new List<SuppressedFinding>();
-        var trustedPublisher = PublisherTrustList.IsTrusted(process.SignatureStatus, process.Publisher);
+        var trustedPublisher = PublisherAllowlistEnabled && PublisherTrustList.IsTrusted(process.SignatureStatus, process.Publisher);
         if (process.SignatureStatus == SignatureStatus.Invalid && process.ExecutablePath is not null)
             Add(findings, "unsigned", "Dosyanın doğrulanabilir bir yayıncı imzası yok.");
         if (process.ExecutablePath is not null && SuspiciousRoots.Any(root =>
@@ -54,7 +55,7 @@ public sealed class RiskEngine : IRiskEngine
     {
         var findings = new List<Finding>();
         var suppressed = new List<SuppressedFinding>();
-        var trustedPublisher = summary.Publishers.Any(x => PublisherTrustList.IsTrusted(summary.SignatureStatus, x));
+        var trustedPublisher = PublisherAllowlistEnabled && summary.Publishers.Any(x => PublisherTrustList.IsTrusted(summary.SignatureStatus, x));
         if (summary.SignatureStatus == SignatureStatus.Invalid && summary.Path is not null)
             Add(findings, "unsigned", "Dosyanın doğrulanabilir bir yayıncı imzası yok.");
         if (summary.Path is not null && SuspiciousRoots.Any(root =>

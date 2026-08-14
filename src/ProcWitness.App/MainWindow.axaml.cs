@@ -19,6 +19,9 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     private readonly CaptureSession _session = new();
     private readonly AiAnalysisPromptBuilder _promptBuilder = new();
     private readonly BaselineManager _baselineManager;
+    private readonly AppSettingsStore _settingsStore;
+    private readonly SecretStore _secretStore;
+    private readonly AiReportService _aiReportService = new();
     private readonly DispatcherTimer _timer = new() { Interval = TimeSpan.FromSeconds(4) };
     private bool _scanning;
     private string _status = "Başlatılıyor";
@@ -50,6 +53,24 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     private BaselineComparison? _baselineComparison;
     private string? _selectedBaseline;
     private string _baselineStatus = "Baseline seçilmedi; karşılaştırma yapılmadı.";
+    private AppSettings _settings = new();
+    private string _settingsLanguage = "Auto";
+    private int _sampleIntervalSeconds = 4;
+    private bool _autoScanOnStartup = true;
+    private int _retentionDays = 7;
+    private double _defaultCaptureMinutes = 5;
+    private bool _persistenceEnabled = true;
+    private bool _publisherAllowlistEnabled = true;
+    private bool _includeRawSnapshots;
+    private bool _aiEnabled;
+    private AiProvider _selectedAiProvider = AiProvider.Anthropic;
+    private string _aiModel = "claude-opus-4-1-20250805";
+    private string _aiEndpoint = "https://api.anthropic.com";
+    private string _apiKey = string.Empty;
+    private string _settingsStatus = "Settings are stored locally.";
+    private string _aiReport = string.Empty;
+    private string? _aiReportPath;
+    private CancellationTokenSource? _aiCancellation;
 
     public ObservableCollection<ProcessAssessment> Assessments { get; } = [];
     public ObservableCollection<PersistenceEntry> PersistenceEntries { get; } = [];
@@ -57,6 +78,27 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     public ObservableCollection<BaselineDifferenceItem> BaselineDifferences { get; } = [];
     public string? SelectedBaseline { get => _selectedBaseline; set => Set(ref _selectedBaseline, value); }
     public string BaselineStatus { get => _baselineStatus; private set => Set(ref _baselineStatus, value); }
+    public IReadOnlyList<string> Languages { get; } = ["Auto", "Türkçe", "English"];
+    public IReadOnlyList<int> SampleIntervals { get; } = [2, 4, 8];
+    public IReadOnlyList<int> RetentionOptions { get; } = [1, 7, 30];
+    public IReadOnlyList<AiProvider> AiProviders { get; } = Enum.GetValues<AiProvider>();
+    public string SettingsLanguage { get => _settingsLanguage; set => Set(ref _settingsLanguage, value); }
+    public int SampleIntervalSeconds { get => _sampleIntervalSeconds; set => Set(ref _sampleIntervalSeconds, value); }
+    public bool AutoScanOnStartup { get => _autoScanOnStartup; set => Set(ref _autoScanOnStartup, value); }
+    public int RetentionDays { get => _retentionDays; set => Set(ref _retentionDays, value); }
+    public double DefaultCaptureMinutes { get => _defaultCaptureMinutes; set => Set(ref _defaultCaptureMinutes, value); }
+    public bool PersistenceEnabled { get => _persistenceEnabled; set => Set(ref _persistenceEnabled, value); }
+    public bool PublisherAllowlistEnabled { get => _publisherAllowlistEnabled; set => Set(ref _publisherAllowlistEnabled, value); }
+    public bool IncludeRawSnapshots { get => _includeRawSnapshots; set => Set(ref _includeRawSnapshots, value); }
+    public bool AiEnabled { get => _aiEnabled; set { if (Set(ref _aiEnabled, value)) OnPropertyChanged(nameof(CanRequestAiReport)); } }
+    public AiProvider SelectedAiProvider { get => _selectedAiProvider; set => Set(ref _selectedAiProvider, value); }
+    public string AiModel { get => _aiModel; set => Set(ref _aiModel, value); }
+    public string AiEndpoint { get => _aiEndpoint; set => Set(ref _aiEndpoint, value); }
+    public string ApiKey { get => _apiKey; set { if (Set(ref _apiKey, value)) OnPropertyChanged(nameof(CanRequestAiReport)); } }
+    public string SettingsStatus { get => _settingsStatus; private set => Set(ref _settingsStatus, value); }
+    public string DataDirectoryText => _session.Store.DataDirectory;
+    public bool CanRequestAiReport => AiEnabled && !string.IsNullOrWhiteSpace(ApiKey) && !string.IsNullOrWhiteSpace(_bundlePath);
+    public string AiReport { get => _aiReport; private set => Set(ref _aiReport, value); }
     public PersistenceEntry? SelectedPersistence { get => _selectedPersistence; set => Set(ref _selectedPersistence, value); }
     public string PersistenceStatus { get => _persistenceStatus; private set => Set(ref _persistenceStatus, value); }
     public string Status { get => _status; private set => Set(ref _status, value); }
@@ -88,9 +130,12 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     public MainWindow()
     {
         _baselineManager = new(_session.Store.DataDirectory);
+        var settingsDirectory = Path.GetDirectoryName(_session.Store.DataDirectory)!;
+        _settingsStore = new(Path.Combine(settingsDirectory, "settings.json"));
+        _secretStore = new(settingsDirectory);
         InitializeComponent(); DataContext = this; RefreshBaselineFiles();
         _timer.Tick += async (_, _) => await ScanAsync();
-        Opened += async (_, _) => { await ScanAsync(); await RefreshPersistenceAsync(); await ScanAsync(); _timer.Start(); };
+        Opened += async (_, _) => { await LoadSettingsAsync(); if (AutoScanOnStartup) await ScanAsync(); if (PersistenceEnabled) { await RefreshPersistenceAsync(); if (AutoScanOnStartup) await ScanAsync(); } if (AutoScanOnStartup) _timer.Start(); };
         Closed += (_, _) => { _timer.Stop(); _captureCancellation?.Cancel(); _session.Dispose(); };
     }
 
@@ -98,6 +143,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     {
         if (_captureStart is not null) { PromptStatus = L("Süreli ölçüm devam ederken anlık tarama başlatılamaz", "An instant scan cannot start during timed analysis"); return; }
         await ScanAsync(true); _instantReady = Assessments.Count > 0; HasCompletedAnalysis = _instantReady;
+        _timer.Start();
         _bundlePath = null; _promptPath = null; OnPropertyChanged(nameof(HasPromptFile));
         PromptStatus = _instantReady ? L("Anlık tarama hazır • prompt oluşturabilirsiniz", "Instant scan ready • you can copy the prompt") : L("Okunabilir süreç bulunamadı", "No readable processes found");
     }
@@ -136,6 +182,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
             ApplyPersistenceInventory(_session.PersistenceInventory!);
             _bundlePath = result.Path; _bundleDuration = duration; _bundleSnapshots = result.Snapshots; _bundleObservations = result.Observations;
             LocalAnalysisReport = result.LocalReport; IsTimedReportVisible = true; HasCompletedAnalysis = true; PromptStatus = $"{L("Yerel analiz tamamlandı", "Local analysis completed")} • {result.Snapshots} {L("örnek", "snapshots")} • {result.Observations} {L("gözlem", "observations")}";
+            OnPropertyChanged(nameof(CanRequestAiReport));
         }
         catch (OperationCanceledException) { PromptStatus = "Ölçüm iptal edildi"; }
         catch (Exception ex) { PromptStatus = $"Analiz oluşturulamadı: {ex.Message}"; }
@@ -370,6 +417,168 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         BaselineFiles.Clear();
         foreach (var path in _baselineManager.List()) BaselineFiles.Add(path);
         SelectedBaseline = selected is not null && BaselineFiles.Contains(selected) ? selected : BaselineFiles.FirstOrDefault();
+    }
+
+    private async Task LoadSettingsAsync()
+    {
+        _settings = await _settingsStore.LoadAsync();
+        SettingsLanguage = _settings.Language;
+        SampleIntervalSeconds = _settings.SampleIntervalSeconds;
+        AutoScanOnStartup = _settings.AutoScanOnStartup;
+        RetentionDays = _settings.RetentionDays;
+        DefaultCaptureMinutes = _settings.DefaultCaptureMinutes;
+        PersistenceEnabled = _settings.PersistenceEnabled;
+        PublisherAllowlistEnabled = _settings.PublisherAllowlistEnabled;
+        IncludeRawSnapshots = _settings.IncludeRawSnapshots;
+        AiEnabled = _settings.AiEnabled;
+        SelectedAiProvider = _settings.AiProvider;
+        AiModel = _settings.AiModel;
+        AiEndpoint = _settings.AiEndpoint;
+        ApiKey = await _secretStore.LoadAsync() ?? string.Empty;
+        _session.SampleInterval = TimeSpan.FromSeconds(SampleIntervalSeconds);
+        _session.PersistenceEnabled = PersistenceEnabled;
+        _session.PublisherAllowlistEnabled = PublisherAllowlistEnabled;
+        _session.IncludeRawSnapshots = IncludeRawSnapshots;
+        _session.RetentionDays = RetentionDays;
+        SettingsStatus = string.IsNullOrWhiteSpace(ApiKey) ? "AI key is not configured; local analysis remains fully available." : "Secure AI key loaded from this machine.";
+    }
+
+    private AppSettings CurrentSettings() => new()
+    {
+        Language = SettingsLanguage,
+        SampleIntervalSeconds = SampleIntervalSeconds,
+        AutoScanOnStartup = AutoScanOnStartup,
+        RetentionDays = RetentionDays,
+        DefaultCaptureMinutes = DefaultCaptureMinutes,
+        PersistenceEnabled = PersistenceEnabled,
+        PublisherAllowlistEnabled = PublisherAllowlistEnabled,
+        IncludeRawSnapshots = IncludeRawSnapshots,
+        AiEnabled = AiEnabled,
+        AiProvider = SelectedAiProvider,
+        AiModel = AiModel.Trim(),
+        AiEndpoint = AiEndpoint.Trim()
+    };
+
+    private async void SaveSettings_Click(object? sender, RoutedEventArgs e)
+    {
+        _settings = CurrentSettings();
+        await _settingsStore.SaveAsync(_settings);
+        var secretResult = await _secretStore.SaveAsync(ApiKey);
+        _session.SampleInterval = TimeSpan.FromSeconds(SampleIntervalSeconds);
+        _session.PersistenceEnabled = PersistenceEnabled;
+        _session.PublisherAllowlistEnabled = PublisherAllowlistEnabled;
+        _session.IncludeRawSnapshots = IncludeRawSnapshots;
+        _session.RetentionDays = RetentionDays;
+        SettingsStatus = $"Settings saved. {secretResult.Status}";
+    }
+
+    private void ProviderChanged(object? sender, SelectionChangedEventArgs e)
+    {
+        if (sender is not ComboBox { SelectedItem: AiProvider provider }) return;
+        if (provider == AiProvider.Anthropic) { AiEndpoint = "https://api.anthropic.com"; AiModel = "claude-opus-4-1-20250805"; }
+        else if (provider == AiProvider.OpenAI) { AiEndpoint = "https://api.openai.com"; AiModel = "gpt-5.2"; }
+    }
+
+    private async void PasteApiKey_Click(object? sender, RoutedEventArgs e)
+    {
+        if (TopLevel.GetTopLevel(this)?.Clipboard is { } clipboard) ApiKey = await clipboard.TryGetTextAsync() ?? string.Empty;
+    }
+
+    private void ToggleApiKey_Click(object? sender, RoutedEventArgs e) => ApiKeyBox.PasswordChar = ApiKeyBox.PasswordChar == '\0' ? '•' : '\0';
+
+    private async void TestAiConnection_Click(object? sender, RoutedEventArgs e)
+    {
+        if (string.IsNullOrWhiteSpace(ApiKey)) { SettingsStatus = "✗ Enter an API key first."; return; }
+        SettingsStatus = "Testing provider connection...";
+        try { SettingsStatus = await _aiReportService.TestConnectionAsync(CurrentSettings(), ApiKey); }
+        catch (HttpRequestException) { SettingsStatus = "✗ Network is unavailable or the endpoint could not be reached."; }
+        catch (TaskCanceledException) { SettingsStatus = "✗ Connection test timed out."; }
+    }
+
+    private async void DeleteLocalData_Click(object? sender, RoutedEventArgs e)
+    {
+        if (!await ConfirmAsync("Delete local ProcWitness data?", "This permanently removes local telemetry, bundles, reports, and baselines. Settings and the encrypted API key are retained.")) return;
+        try
+        {
+            if (Directory.Exists(_session.Store.DataDirectory))
+                foreach (var path in Directory.EnumerateFileSystemEntries(_session.Store.DataDirectory))
+                {
+                    if (Directory.Exists(path)) Directory.Delete(path, true); else File.Delete(path);
+                }
+            _bundlePath = null; _promptPath = null; _baselineComparison = null; BaselineDifferences.Clear(); RefreshBaselineFiles();
+            HasCompletedAnalysis = false; IsTimedReportVisible = false; OnPropertyChanged(nameof(HasPromptFile)); OnPropertyChanged(nameof(CanRequestAiReport));
+            SettingsStatus = "All local analysis data was deleted.";
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { SettingsStatus = $"Local data could not be deleted: {ex.Message}"; }
+    }
+
+    private async void RequestAiReport_Click(object? sender, RoutedEventArgs e)
+    {
+        if (!CanRequestAiReport || _bundlePath is null) { SettingsStatus = "Configure and enable an AI provider, then complete a timed capture."; return; }
+        var settings = CurrentSettings();
+        var info = await _aiReportService.InspectAsync(_bundlePath, settings);
+        var confirmation = $"File: {Path.GetFileName(info.BundlePath)}\nPrepared payload: {info.Bytes:N0} bytes\nProcesses: {info.ProcessCount}\nDestination: {info.Provider} • {info.Endpoint}\nModel: {info.Model}\nEstimated input: ~{info.EstimatedTokens:N0} tokens\n\nOnly meta, process summaries, persistence summary, baseline comparison{(IncludeRawSnapshots ? ", and raw snapshots" : string.Empty)} will be sent.";
+        if (!await ConfirmAsync("Send evidence for AI report?", confirmation)) return;
+        _aiCancellation = new(); SettingsStatus = "AI report is being generated...";
+        try
+        {
+            var result = await _aiReportService.GenerateAsync(_bundlePath, settings, ApiKey, _aiCancellation.Token);
+            _aiReportPath = result.Path; AiReport = result.Markdown; RenderMarkdown(result.Markdown); SettingsStatus = $"AI report saved: {result.Path}";
+        }
+        catch (OperationCanceledException) { SettingsStatus = "AI report request cancelled."; }
+        catch (HttpRequestException ex) { SettingsStatus = ex.Message; }
+        finally { _aiCancellation.Dispose(); _aiCancellation = null; }
+    }
+
+    private void CancelAiReport_Click(object? sender, RoutedEventArgs e) => _aiCancellation?.Cancel();
+    private async void CopyAiReport_Click(object? sender, RoutedEventArgs e)
+    {
+        if (TopLevel.GetTopLevel(this)?.Clipboard is { } clipboard && !string.IsNullOrWhiteSpace(AiReport)) { await clipboard.SetTextAsync(AiReport); SettingsStatus = "AI report copied."; }
+    }
+    private void OpenAiReport_Click(object? sender, RoutedEventArgs e)
+    {
+        if (_aiReportPath is not null && File.Exists(_aiReportPath)) OpenPath(_aiReportPath, false);
+    }
+
+    private void RenderMarkdown(string markdown)
+    {
+        MarkdownReportPanel.Children.Clear();
+        foreach (var line in markdown.Split('\n'))
+        {
+            var heading = line.StartsWith('#');
+            var text = heading ? line.TrimStart('#', ' ') : line;
+            MarkdownReportPanel.Children.Add(new TextBlock
+            {
+                Text = text,
+                TextWrapping = Avalonia.Media.TextWrapping.Wrap,
+                FontSize = heading ? 20 : 14,
+                FontWeight = heading ? Avalonia.Media.FontWeight.Bold : Avalonia.Media.FontWeight.Normal,
+                Foreground = heading ? Avalonia.Media.Brushes.Cyan : Avalonia.Media.Brushes.White,
+                Margin = new Avalonia.Thickness(0, heading ? 12 : 2, 0, 2)
+            });
+        }
+    }
+
+    private async Task<bool> ConfirmAsync(string title, string message)
+    {
+        var result = false;
+        var dialog = new Window { Title = title, Width = 560, Height = 360, WindowStartupLocation = WindowStartupLocation.CenterOwner, Background = Avalonia.Media.Brushes.Black };
+        var yes = new Button { Content = "Confirm", MinWidth = 110 };
+        var no = new Button { Content = "Cancel", MinWidth = 110 };
+        yes.Click += (_, _) => { result = true; dialog.Close(); };
+        no.Click += (_, _) => dialog.Close();
+        dialog.Content = new StackPanel
+        {
+            Margin = new Avalonia.Thickness(24), Spacing = 18,
+            Children =
+            {
+                new TextBlock { Text = title, FontSize = 22, FontWeight = Avalonia.Media.FontWeight.Bold, Foreground = Avalonia.Media.Brushes.Cyan },
+                new TextBlock { Text = message, TextWrapping = Avalonia.Media.TextWrapping.Wrap, Foreground = Avalonia.Media.Brushes.White },
+                new StackPanel { Orientation = Avalonia.Layout.Orientation.Horizontal, Spacing = 12, HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Right, Children = { no, yes } }
+            }
+        };
+        await dialog.ShowDialog(this);
+        return result;
     }
 
     private static string PlatformName() => OperatingSystem.IsWindows() ? "Windows" : OperatingSystem.IsLinux() ? "Linux" : OperatingSystem.IsMacOS() ? "macOS" : "Bilinmeyen OS";
