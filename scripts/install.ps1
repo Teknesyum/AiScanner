@@ -35,6 +35,14 @@ try {
     $shortcut.IconLocation = "$executable,0"
     $shortcut.Save()
 
+    $cliDirectory = Join-Path $installDir 'cli'
+    $userPath = [Environment]::GetEnvironmentVariable('Path', 'User')
+    $pathParts = @($userPath -split ';' | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+    if ($pathParts -notcontains $cliDirectory) {
+        [Environment]::SetEnvironmentVariable('Path', (($pathParts + $cliDirectory) -join ';'), 'User')
+        $env:Path = "$env:Path;$cliDirectory"
+    }
+
     Start-Process -FilePath $executable
     Write-Host "ProcWitness $($release.tag_name) was installed successfully." -ForegroundColor Cyan
 } finally {

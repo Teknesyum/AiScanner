@@ -194,6 +194,23 @@ Create self-contained Windows x64, Linux x64, macOS x64, and macOS ARM64 archive
 
 The desktop UI uses [Avalonia](https://avaloniaui.net/). Windows network-byte collection uses ETW; Linux and macOS adapters use native, read-only operating-system sources.
 
+## Headless CLI
+
+Release installers add `procwitness` to the user PATH. The CLI and desktop application use the same `CaptureSession`, risk rules, persistence inventory, baseline comparison, and bundle schema.
+
+```text
+procwitness scan
+procwitness scan --json
+procwitness capture --minutes 5 --out bundle.json --format json
+procwitness persistence --json
+procwitness baseline save
+procwitness baseline compare --file baseline-20260814-120000.json --json
+procwitness prompt --bundle bundle.json
+procwitness --version
+```
+
+Normal success returns exit code `0`, runtime failures return `1`, and invalid arguments return `2`. Findings do not change the exit code unless `scan --exit-code-on-high` is explicitly requested. In JSON mode stdout contains only JSON; status and progress go to stderr.
+
 ## Privacy and responsible use
 
 - no automatic upload or cloud dependency

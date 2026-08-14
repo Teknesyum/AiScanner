@@ -3,6 +3,10 @@ $installDir = Join-Path $env:LOCALAPPDATA 'Programs\ProcWitness'
 $shortcutPath = Join-Path ([Environment]::GetFolderPath('Desktop')) 'ProcWitness.lnk'
 Get-Process -Name 'ProcWitness' -ErrorAction SilentlyContinue | Stop-Process -Force
 if (Test-Path $shortcutPath) { Remove-Item -LiteralPath $shortcutPath -Force }
+$cliDirectory = Join-Path $installDir 'cli'
+$userPath = [Environment]::GetEnvironmentVariable('Path', 'User')
+$updatedPath = @($userPath -split ';' | Where-Object { -not [string]::IsNullOrWhiteSpace($_) -and $_ -ne $cliDirectory }) -join ';'
+[Environment]::SetEnvironmentVariable('Path', $updatedPath, 'User')
 
 $cleanup = Join-Path ([IO.Path]::GetTempPath()) ("ProcWitness-Uninstall-" + [guid]::NewGuid().ToString('N') + '.ps1')
 @"

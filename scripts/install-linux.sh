@@ -10,7 +10,7 @@ curl -fL "$asset_url" -o "$tmp_dir/procwitness.tar.gz"
 mkdir -p "$install_dir" "$bin_dir" "${XDG_DATA_HOME:-$HOME/.local/share}/applications"
 tar -xzf "$tmp_dir/procwitness.tar.gz" -C "$install_dir"
 chmod +x "$install_dir/ProcWitness"
-ln -sf "$install_dir/ProcWitness" "$bin_dir/procwitness"
+ln -sf "$install_dir/cli/procwitness" "$bin_dir/procwitness"
 cat > "${XDG_DATA_HOME:-$HOME/.local/share}/applications/procwitness.desktop" <<EOF
 [Desktop Entry]
 Type=Application

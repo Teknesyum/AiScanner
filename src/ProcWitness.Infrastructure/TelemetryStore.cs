@@ -28,12 +28,12 @@ public sealed class TelemetryStore
     public void SetPersistenceInventory(PersistenceInventory inventory) => _persistenceInventory = inventory;
     public void SetBaselineComparison(BaselineComparison? comparison) => _baselineComparison = comparison;
 
-    public TelemetryStore(IRiskEngine? riskEngine = null)
+    public TelemetryStore(IRiskEngine? riskEngine = null, string? dataDirectory = null)
     {
         _riskEngine = riskEngine ?? new RiskEngine();
         var localData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-        DataDirectory = Path.Combine(localData, "ProcWitness", "data");
-        MigrateLegacyData(Path.Combine(localData, "Ai" + "Scanner", "data"), DataDirectory);
+        DataDirectory = dataDirectory ?? Path.Combine(localData, "ProcWitness", "data");
+        if (dataDirectory is null) MigrateLegacyData(Path.Combine(localData, "Ai" + "Scanner", "data"), DataDirectory);
     }
 
     internal static void MigrateLegacyData(string legacyDirectory, string targetDirectory)

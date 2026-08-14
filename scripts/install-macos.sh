@@ -9,10 +9,11 @@ version=$(printf '%s' "$release_json" | grep '"tag_name"' | cut -d '"' -f 4 | se
 [ -n "$asset_url" ] || { echo "macOS release asset not found for $arch." >&2; exit 1; }
 tmp_dir=$(mktemp -d); trap 'rm -rf "$tmp_dir"' EXIT
 curl -fL "$asset_url" -o "$tmp_dir/procwitness.tar.gz"; mkdir -p "$app_dir/Contents/MacOS" "$app_dir/Contents/Resources"
-tar -xzf "$tmp_dir/procwitness.tar.gz" -C "$app_dir/Contents/MacOS"; chmod +x "$app_dir/Contents/MacOS/ProcWitness"
+tar -xzf "$tmp_dir/procwitness.tar.gz" -C "$app_dir/Contents/MacOS"; chmod +x "$app_dir/Contents/MacOS/ProcWitness" "$app_dir/Contents/MacOS/cli/procwitness"
 cp "$app_dir/Contents/MacOS/Assets/ProcWitnessIcon.png" "$app_dir/Contents/Resources/ProcWitnessIcon.png"
 cat > "$app_dir/Contents/Info.plist" <<EOF
 <?xml version="1.0" encoding="UTF-8"?><!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd"><plist version="1.0"><dict><key>CFBundleExecutable</key><string>ProcWitness</string><key>CFBundleIdentifier</key><string>com.teknesyum.procwitness</string><key>CFBundleName</key><string>ProcWitness</string><key>CFBundleVersion</key><string>$version</string><key>CFBundlePackageType</key><string>APPL</string><key>NSHighResolutionCapable</key><true/></dict></plist>
 EOF
+mkdir -p "$HOME/.local/bin"; ln -sf "$app_dir/Contents/MacOS/cli/procwitness" "$HOME/.local/bin/procwitness"
 echo "Installed: $app_dir"
 open "$app_dir"
