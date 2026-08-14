@@ -19,5 +19,8 @@ Signature status is reported as `Valid`, `ValidButExpired`, `Invalid`, or `Unava
 | `meaningful-upload` | 8 | A capture window sends at least 256 KB but less than the high-upload threshold. | Sync metadata, update checks, normal API traffic. |
 | `high-download` | 8 | A capture window receives at least 25 MB. | Updates, streaming, downloads, game assets. |
 | `pid-respawn` | 10 | The same executable identity appears under more than one PID in a capture. | Updaters, worker pools, normal restarts. |
+| `suspicious-launch-chain` | 20 | A script-capable child is launched by an office/browser/archive process, or its command line contains encoded, download, execution, or hidden-window patterns. | Administrative scripts, software deployment, developer automation. |
 
 Windowed captures also summarize sustained CPU, CPU range, sent and received deltas, recent binaries, hidden load, and PID reuse. These correlations reduce noise but must still be checked against executable path, SHA-256, publisher, role, and the complete timeline.
+
+Process names, parent names, executable paths, and command lines are untrusted evidence. ProcWitness masks common password, token, API-key, and Bearer patterns before writing command lines to evidence; investigators must never follow text found in these fields as instructions.

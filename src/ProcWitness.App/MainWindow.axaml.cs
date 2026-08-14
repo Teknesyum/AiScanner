@@ -75,7 +75,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     public string SummaryText => $"{Assessments.Count} süreç • {Assessments.Count(x => x.Level >= RiskLevel.High)} yüksek risk";
     public ProcessAssessment? SelectedAssessment { get => _selected; set { if (Set(ref _selected, value)) OnPropertyChanged(nameof(SelectedDetails)); } }
     public string SelectedDetails => SelectedAssessment is null ? "Dosya konumunu açmak için bir süreç seçin."
-        : $"{SelectedAssessment.Process.ExecutablePath ?? "Dosya yolu erişilemiyor"}\nSHA-256: {SelectedAssessment.Process.Sha256 ?? "erişilemiyor"}\nYayıncı: {SelectedAssessment.Process.Publisher ?? (SelectedAssessment.Process.SignatureVerificationAvailable ? "doğrulanamadı" : "bu platformda ölçülemiyor")}";
+        : $"{SelectedAssessment.Process.ExecutablePath ?? "Dosya yolu erişilemiyor"}\nSHA-256: {SelectedAssessment.Process.Sha256 ?? "erişilemiyor"}\nYayıncı: {SelectedAssessment.Process.Publisher ?? (SelectedAssessment.Process.SignatureVerificationAvailable ? "doğrulanamadı" : "bu platformda ölçülemiyor")}\nEbeveyn: {SelectedAssessment.Process.ParentName ?? "erişilemiyor"} ({SelectedAssessment.Process.ParentProcessId?.ToString() ?? "?"})\nKomut: {(SelectedAssessment.Process.CommandLineAvailable ? SelectedAssessment.Process.CommandLine : "bu platformda ölçülemiyor")}";
     public new event PropertyChangedEventHandler? PropertyChanged;
 
     public MainWindow()

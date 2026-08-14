@@ -30,6 +30,8 @@ public sealed class RiskEngine : IRiskEngine
             Add(findings, "recent-network-binary", $"Dosya oluşturma zamanı: {created.LocalDateTime:g}.");
         if (process.WindowVisibilityAvailable && process.SentBytes >= 10 * 1024 * 1024 && !process.HasVisibleWindow)
             Add(findings, "background-upload", $"İzleme başladığından beri {process.SentMegabytes:F1} MB gönderildi.");
+        if (IsSuspiciousLaunch(process.Name, process.ParentName, process.CommandLine))
+            Add(findings, "suspicious-launch-chain", $"Ebeveyn: {process.ParentName ?? "bilinmiyor"}; komut satırında şüpheli başlatma deseni gözlendi.");
         AddTaskManagerEvasionFinding(process, history, lastTaskManagerStart, findings);
         var (score, level) = Score(findings);
         return new(process, score, level, findings) { SuppressedFindings = suppressed };
@@ -66,6 +68,8 @@ public sealed class RiskEngine : IRiskEngine
             AddOrSuppress(findings, suppressed, "hidden-load", "Görünür pencere olmadan yoğun kaynak veya ağ kullanımı gözlendi.", trustedPublisher);
         if (summary.PidCount > 1)
             Add(findings, "pid-respawn", $"Aynı dosya {summary.PidCount} farklı PID ile gözlendi.");
+        if (summary.SuspiciousLaunchChain)
+            Add(findings, "suspicious-launch-chain", "Şüpheli ebeveyn/çocuk ilişkisi veya komut satırı deseni gözlendi.");
         var meaningful = summary.MaxCpu >= RuleSet.MeaningfulThresholds.PeakCpu ||
                          summary.CpuRange >= RuleSet.MeaningfulThresholds.CpuRange ||
                          summary.SentBytesInWindow >= RuleSet.MeaningfulThresholds.SentBytes ||
@@ -84,6 +88,18 @@ public sealed class RiskEngine : IRiskEngine
     {
         if (trustedPublisher) suppressed.Add(new(code, "trusted-publisher"));
         else Add(findings, code, explanation);
+    }
+
+    public static bool IsSuspiciousLaunch(string processName, string? parentName, string? commandLine)
+    {
+        var child = Path.GetFileNameWithoutExtension(processName).ToLowerInvariant();
+        var parent = Path.GetFileNameWithoutExtension(parentName ?? string.Empty).ToLowerInvariant();
+        string[] interpreters = ["powershell", "pwsh", "wscript", "cscript", "mshta", "rundll32", "regsvr32", "bash", "curl"];
+        string[] launchers = ["winword", "excel", "powerpnt", "outlook", "chrome", "msedge", "firefox", "7z", "winrar"];
+        if (interpreters.Contains(child) && launchers.Contains(parent)) return true;
+        if (string.IsNullOrWhiteSpace(commandLine)) return false;
+        string[] patterns = ["-enc", "-encodedcommand", "frombase64string", "iex", "downloadstring", "-w hidden", "-windowstyle hidden"];
+        return patterns.Any(x => commandLine.Contains(x, StringComparison.OrdinalIgnoreCase));
     }
 
     private static void Add(ICollection<Finding> findings, string code, string explanation)

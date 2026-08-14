@@ -23,6 +23,11 @@ public sealed record ProcessObservation(
     public int ActiveConnections { get; init; }
     public IReadOnlyList<string> RemoteEndpoints { get; init; } = [];
     public DateTimeOffset? FileCreatedAt { get; init; }
+    public int? ParentProcessId { get; init; }
+    public string? ParentName { get; init; }
+    public string? CommandLine { get; init; }
+    public bool CommandLineAvailable { get; init; }
+    public bool ProcessTreeAvailable { get; init; }
     public double SentMegabytes => SentBytes / 1024d / 1024d;
     public double ReceivedMegabytes => ReceivedBytes / 1024d / 1024d;
 }
@@ -62,6 +67,15 @@ public sealed record ProcessMilestone(
     long ReceivedBytes,
     int ActiveConnections);
 
+public sealed record ProcessTreeNode(
+    int ProcessId,
+    string Name,
+    int? ParentProcessId,
+    string? ParentName,
+    string? CommandLine,
+    bool CommandLineAvailable,
+    bool ProcessTreeAvailable);
+
 public sealed record ProcessWindowSummary(
     string Identity,
     string Name,
@@ -76,6 +90,11 @@ public sealed record ProcessWindowSummary(
     bool WindowVisibilityAvailable,
     bool Hidden,
     IReadOnlyList<string> Publishers,
+    IReadOnlyList<string> ParentNames,
+    IReadOnlyList<string> CommandLines,
+    bool CommandLineAvailable,
+    bool ProcessTreeAvailable,
+    bool SuspiciousLaunchChain,
     long SentBytesInWindow,
     long ReceivedBytesInWindow,
     int MaxConnections,
@@ -115,6 +134,7 @@ public static class RuleSet
         new("meaningful-upload", "Anlamlı upload", 8),
         new("high-download", "Yüksek download", 8),
         new("pid-respawn", "Aynı dosya farklı PID ile gözlendi", 10)
+        ,new("suspicious-launch-chain", "Şüpheli başlatma zinciri", 20)
     }.ToDictionary(x => x.Code, StringComparer.Ordinal);
 
     public static class MeaningfulThresholds

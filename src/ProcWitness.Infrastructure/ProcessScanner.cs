@@ -9,6 +9,7 @@ namespace ProcWitness.Infrastructure;
 public sealed class ProcessScanner
 {
     private readonly Dictionary<int, (TimeSpan Cpu, DateTimeOffset At)> _previous = [];
+    private readonly ProcessMetadataInspector _metadataInspector = new();
     private readonly Dictionary<string, FileEvidence> _fileEvidence = OperatingSystem.IsWindows()
         ? new(StringComparer.OrdinalIgnoreCase)
         : new(StringComparer.Ordinal);
@@ -55,6 +56,21 @@ public sealed class ProcessScanner
         }
 
         var activeIds = observations.Select(x => x.ProcessId).ToHashSet();
+        var metadata = await _metadataInspector.ReadAsync(activeIds, cancellationToken);
+        var names = observations.ToDictionary(x => x.ProcessId, x => x.Name);
+        for (var index = 0; index < observations.Count; index++)
+        {
+            var observation = observations[index];
+            if (!metadata.TryGetValue(observation.ProcessId, out var details)) continue;
+            observations[index] = observation with
+            {
+                ParentProcessId = details.ParentProcessId,
+                ParentName = details.ParentProcessId is { } parentId && names.TryGetValue(parentId, out var parentName) ? parentName : null,
+                CommandLine = details.CommandLine,
+                CommandLineAvailable = details.CommandLineAvailable,
+                ProcessTreeAvailable = details.ProcessTreeAvailable
+            };
+        }
         foreach (var stale in _previous.Keys.Where(x => !activeIds.Contains(x)).ToArray()) _previous.Remove(stale);
         if (_fileEvidence.Count > 4096) _fileEvidence.Clear();
         return observations;

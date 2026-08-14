@@ -121,12 +121,13 @@ public sealed class RiskEngineTests
         "meaningful-upload" => CleanWindow() with { SentBytesInWindow = 300 * 1024 },
         "high-download" => CleanWindow() with { ReceivedBytesInWindow = 26 * 1024 * 1024 },
         "pid-respawn" => CleanWindow() with { PidCount = 2 },
+        "suspicious-launch-chain" => CleanWindow() with { SuspiciousLaunchChain = true },
         _ => throw new ArgumentOutOfRangeException(nameof(code), code, null)
     };
 
     internal static ProcessWindowSummary CleanWindow() => new(
         "worker|safe|ABC", "worker", @"C:\Program Files\Safe\safe.exe", "ABC", 3,
-        2, 2, 0, 1, SignatureStatus.Valid, true, false, ["Safe Publisher"],
+        2, 2, 0, 1, SignatureStatus.Valid, true, false, ["Safe Publisher"], [], [], true, true, false,
         0, 0, 0, [], false, 1, DateTimeOffset.UtcNow.AddMinutes(-1), DateTimeOffset.UtcNow,
         [new(DateTimeOffset.UtcNow, 2, 1, 0, 0, 0)]);
 }
